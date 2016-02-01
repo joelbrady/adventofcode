@@ -1,32 +1,56 @@
 import sys
 import re
+import collections
 
-wires = {}
-pending = []
 
 class Wire(object):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, output_name, value):
+        self.v = int(value)
+        self.output_name = output_name
 
-    def value(self):
-        return self.value
+    def value(self, wires=None):
+        return self.v
 
+    def __repr__(self):
+        return '{} -> {}'.format(self.v, self.output_name)
+
+
+class NotWire(object):
+    def __init__(self, dst, src):
+        self.dst = dst
+        self.src = src
+        self.v = None
+
+    def value(self, wires):
+        if self.v is None:
+            src_val = ~wires[self.src].value(wires)
+            if src_val > 0:
+                self.v = src_val
+            else:
+                self.v = src_val + 2**16
+        return self.v
+
+    def __repr__(self):
+        return 'NOT {} -> {}'.format(self.src, self.dst)
 
 def main():
-    for line in sys.stdin.readlines():
-        process_line(line.strip())
-    while len(pending) > 0:
-        process_line(pending.pop())
-    print wires
+    print run(sys.stdin.readlines())
 
 
-def process_line(line):
-    for test in checks:
-        if test(line):
-            break
-    for k in wires.keys():
-        if wires[k] < 0:
-            wires[k] += 2 **16
+def run(lines):
+    unevaluated = {}
+    for line in lines:
+        process_line(unevaluated, line.strip())
+    return unevaluated
+
+
+def process_line(wires, line):
+    for check in (val, noot):
+        try:
+            wire_dst, wire = check(line)
+            wires[wire_dst] = wire
+        except TypeError:
+            continue
 
 
 def val(s):
@@ -34,19 +58,17 @@ def val(s):
         if m.group(1) == 'NOT':
             value, wire = m.group(2), m.group(3)
             value = ~int(value)
+            raise NotImplementedError
         else:
             value, wire = m.group(2), m.group(3)
-        wires[wire] = int(value)
+            return wire, Wire(wire, value)
     return match(r'(NOT)?\s*(\d+)\s*->\s*(\w+)', f, s)
 
 
 def noot(s):
     def f(m, s):
         src, dst = m.group(1), m.group(2)
-        if src in wires.keys():
-            wires[dst] = ~wires[src]
-        else:
-            pending.append(s)
+        return dst, NotWire(dst, src)
     return match(r'NOT\s*(\w+)\s*->\s*(\w+)', f, s)
 
 
@@ -93,12 +115,49 @@ def rshift(s):
 def match(regex, f, s):
     m = re.match(regex, s)
     if m is not None:
-        f(m, s)
-        return True
-    return False
+        return f(m, s)
+    return None
 
-checks = (val, noot, annd, orr, lshift, rshift)
+
+def evaluate(wires):
+    a = wires['a']
+    return a.value(wires)
+
+
+def test():
+    with open('7.example.input') as test_input:
+        lines = test_input.readlines()
+    unevaluated_wires = run(lines)
+    wires = evaluate(unevaluated_wires)
+    assert wires == {
+        'd': 72,
+        'e': 507,
+        'f': 492,
+        'g': 114,
+        'h': 65412,
+        'i': 65079,
+        'x': 123,
+        'y': 456,
+        'a': 1
+    }
+
+
+def simple_test():
+    lines = [
+        '123 -> x',
+        '456 -> y',
+        'x AND y -> a'
+    ]
+    unevaluated_wires = run(lines)
+    print unevaluated_wires
+    a = evaluate(unevaluated_wires)
+    print a
+    assert a == 72 
+
+
 if __name__ == '__main__':
+    simple_test()
+    test()
     main()
 
 
