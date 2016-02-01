@@ -33,6 +33,26 @@ class NotWire(object):
     def __repr__(self):
         return 'NOT {} -> {}'.format(self.src, self.dst)
 
+
+class AndWire(object):
+    def __init__(self, dst, x, y):
+        self.dst = dst
+        self.x = x
+        self.y = y
+        self.v = None
+
+    def value(self, wires):
+        if self.v is None:
+            x_wire = wires[self.x]
+            y_wire = wires[self.y]
+            x = x_wire.value(wires)
+            y = y_wire.value(wires)
+            self.v = x & y
+        return self.v
+
+    def __repr__(self):
+        return '{} AND {} -> {}'.format(self.x, self.y, self.dst)
+
 def main():
     print run(sys.stdin.readlines())
 
@@ -45,7 +65,7 @@ def run(lines):
 
 
 def process_line(wires, line):
-    for check in (val, noot):
+    for check in (val, noot, annd):
         try:
             wire_dst, wire = check(line)
             wires[wire_dst] = wire
@@ -75,10 +95,7 @@ def noot(s):
 def annd(s):
     def f(m, s):
         x, y, dst = m.group(1), m.group(2), m.group(3)
-        if x in wires.keys() and y in wires.keys():
-            wires[dst] = wires[x] & wires[y]
-        else:
-            pending.append(s)
+        return dst, AndWire(dst, x, y)
     return match(r'(\w+)\s*AND\s*(\w+)\s*->\s*(\w+)', f, s)
 
 
