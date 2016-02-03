@@ -4,15 +4,21 @@ import collections
 
 
 class Wire(object):
-    def __init__(self, output_name, value):
-        self.v = int(value)
+    def __init__(self, output_name, val):
+        self.v = None
+        self.val = val
         self.output_name = output_name
 
     def value(self, wires=None):
+        if self.v is None:
+            try:
+                self.v = int(self.val)
+            except ValueError:
+                self.v = wires[self.val].value(wires)
         return self.v
 
     def __repr__(self):
-        return '{} -> {}'.format(self.v, self.output_name)
+        return '{} -> {}'.format(self.val, self.output_name)
 
 
 class NotWire(object):
@@ -43,18 +49,66 @@ class AndWire(object):
 
     def value(self, wires):
         if self.v is None:
-            x_wire = wires[self.x]
-            y_wire = wires[self.y]
-            x = x_wire.value(wires)
-            y = y_wire.value(wires)
+            try:
+                x = int(self.x)
+            except ValueError:
+                x_wire = wires[self.x]
+                x = x_wire.value(wires)
+            try:
+                y = int(self.y)
+            except ValueError:
+                y_wire = wires[self.y]
+                y = y_wire.value(wires)
             self.v = x & y
         return self.v
 
     def __repr__(self):
         return '{} AND {} -> {}'.format(self.x, self.y, self.dst)
 
+
+class OrWire(object):
+    def __init__(self, dst, x, y):
+        self.dst = dst
+        self.x = x
+        self.y = y
+        self.v = None
+
+    def value(self, wires):
+        if self.v is None:
+            x_wire = wires[self.x]
+            y_wire = wires[self.y]
+            x = x_wire.value(wires)
+            y = y_wire.value(wires)
+            self.v = x | y
+        return self.v
+
+    def __repr__(self):
+        return '{} OR {} -> {}'.format(self.x, self.y, self.dst)
+
+
+class ShiftWire(object):
+    def __init__(self, dst, src, scalar, shift_func, shift_symbol):
+        self.dst = dst
+        self.src = src
+        self.scalar = scalar
+        self.shift_func = shift_func
+        self.shift_symbol = shift_symbol
+        self.v = None
+    
+    def value(self, wires):
+        if self.v is None:
+            src = wires[self.src].value(wires)
+            self.v = self.shift_func(src)
+        return self.v
+
+    def __repr__(self):
+        return '{} {} {} -> {}'.format(self.src, self.shift_symbol, self.scalar, self.dst)
+
+
 def main():
-    print run(sys.stdin.readlines())
+    with open('7.input.txt') as f:
+        unevaluated = run(f.readlines())
+        print evaluate(unevaluated)
 
 
 def run(lines):
@@ -65,24 +119,26 @@ def run(lines):
 
 
 def process_line(wires, line):
-    for check in (val, noot, annd):
+    if line == '':
+        return
+    for check in (val, noot, annd, orr, lshift, rshift):
         try:
             wire_dst, wire = check(line)
             wires[wire_dst] = wire
+            return
         except TypeError:
             continue
-
+    
+    print
+    print 'Could not process:', line
+    print
+    raise NotImplementedError
 
 def val(s):
     def f(m, s):
-        if m.group(1) == 'NOT':
-            value, wire = m.group(2), m.group(3)
-            value = ~int(value)
-            raise NotImplementedError
-        else:
-            value, wire = m.group(2), m.group(3)
-            return wire, Wire(wire, value)
-    return match(r'(NOT)?\s*(\d+)\s*->\s*(\w+)', f, s)
+        value, wire = m.group(1), m.group(2)
+        return wire, Wire(wire, value)
+    return match(r'\s*(\w+)\s*->\s*(\w+)', f, s)
 
 
 def noot(s):
@@ -102,30 +158,30 @@ def annd(s):
 def orr(s):
     def f(m, s):
         x, y, dst = m.group(1), m.group(2), m.group(3)
-        if x in wires.keys() and y in wires.keys():
-            wires[dst] = wires[x] | wires[y]
-        else:
-            pending.append(s)
+        return dst, OrWire(dst, x, y)
     return match(r'(\w+)\s*OR\s*(\w+)\s*->\s*(\w+)', f, s)
 
 
 def lshift(s):
     def f(m, s):
         x, y, dst = m.group(1), int(m.group(2)), m.group(3)
-        if x in wires.keys():
-            wires[dst] = wires[x] << y
-        else:
-            pending.append(s)
+        def left_shift(v):
+            result = v << y
+            result %= 2 ** 16
+            return result
+        wire = ShiftWire(dst, x, y, left_shift, 'LSHIFT')
+        return dst, wire
     return match(r'(\w+)\s*LSHIFT\s*(\d+)\s*->\s*(\w+)', f, s)
 
 
 def rshift(s):
     def f(m, s):
         x, y, dst = m.group(1), int(m.group(2)), m.group(3)
-        if x in wires.keys():
-            wires[dst] = wires[x] >> y
-        else:
-            pending.append(s)
+        def right_shift(v):
+            result = v >> y
+            return result
+        wire = ShiftWire(dst, x, y, right_shift, 'RSHIFT')
+        return dst, wire
     return match(r'(\w+)\s*RSHIFT\s*(\d+)\s*->\s*(\w+)', f, s)
 
 
@@ -145,31 +201,23 @@ def test():
     with open('7.example.input') as test_input:
         lines = test_input.readlines()
     unevaluated_wires = run(lines)
-    wires = evaluate(unevaluated_wires)
-    assert wires == {
-        'd': 72,
-        'e': 507,
-        'f': 492,
-        'g': 114,
-        'h': 65412,
-        'i': 65079,
-        'x': 123,
-        'y': 456,
-        'a': 1
-    }
+    a_val = evaluate(unevaluated_wires)
+    assert a_val == 1
 
 
 def simple_test():
     lines = [
         '123 -> x',
         '456 -> y',
-        'x AND y -> a'
+        'x AND y -> d',
+        'x OR y -> e',
+        'x LSHIFT 2 -> f',
+        'y RSHIFT 2 -> g',
+        'NOT x -> a'
     ]
     unevaluated_wires = run(lines)
-    print unevaluated_wires
     a = evaluate(unevaluated_wires)
-    print a
-    assert a == 72 
+    assert a == 65412
 
 
 if __name__ == '__main__':
