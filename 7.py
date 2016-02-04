@@ -1,6 +1,7 @@
 import sys
 import re
 import collections
+import copy
 
 
 class Wire(object):
@@ -108,6 +109,9 @@ class ShiftWire(object):
 def main():
     with open('7.input.txt') as f:
         unevaluated = run(f.readlines())
+        a = evaluate(copy.deepcopy(unevaluated))
+        print a
+        unevaluated['b'] = Wire('b', a)
         print evaluate(unevaluated)
 
 
@@ -133,6 +137,7 @@ def process_line(wires, line):
     print 'Could not process:', line
     print
     raise NotImplementedError
+
 
 def val(s):
     def f(m, s):
