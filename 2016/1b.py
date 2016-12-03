@@ -1,11 +1,12 @@
 import itertools
 import sys
 
-with open('1.input') as f:
+with open('1b.input') as f:
     moves = ''.join(f.readlines()).strip().split(', ')
 
 position = (0, 0)
 direction = (0, 1)
+visited = set()
 
 def right(v):
     x, y = v
@@ -25,6 +26,9 @@ for move in moves:
         direction = right(direction)
     distance = int(move[1:])
     for _ in xrange(distance):
+        visited.add(position)
         position = add(position, direction)
+        if position in visited:
+            print position, sum(position)
+            sys.exit(0)
 
-print sum(position)
