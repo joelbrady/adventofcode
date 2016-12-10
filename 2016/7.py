@@ -1,5 +1,6 @@
 import sys
 import re
+import pdb
 
 
 def verify(ip):
@@ -50,5 +51,58 @@ assert not verify('abcd[bddb]xyyx')
 assert not verify('aaaa[qwer]tyui')
 assert verify('ioxxoj[asdfgh]zxcvbn')
 
+def ssl(ip):
+    blocks = extract_blocks(ip)
+    abas = get_abas(blocks)
+    babs = set()
+    for hypernet in extract_hypernets(ip):
+        for s in substrings(hypernet):
+            babs.add(s)
+    for aba in abas:
+        bab = aba_to_bab(aba)
+        if bab in babs:
+            return True
+    return False
+
+def aba_to_bab(aba):
+    return aba[1] + aba[0] + aba[1]
+
+def is_aba(aba):
+    return aba[0] == aba[2] and aba[1] != aba[0]
+
+assert is_aba('aba')
+assert is_aba('zyz')
+assert not is_aba('aaa')
+
+assert aba_to_bab('aba') == 'bab'
+
+def get_abas(blocks):
+    abas = []
+    for block in blocks:
+        for aba in substrings(block):
+            if is_aba(aba):
+                abas.append(aba)
+    return abas
+
+def substrings(s):
+    ss = set()
+    for i in xrange(len(s) - 2):
+        ss.add(s[i:i+3])
+    return ss
+
+assert substrings('aaaa') == set(['aaa'])
+assert substrings('aaab') == set(['aaa', 'aab'])
+assert substrings('abcde') == set(['abc', 'bcd', 'cde'])
+
+assert get_abas(['abaa']) == ['aba']
+assert get_abas(['aba', 'zyz']) == ['aba', 'zyz']
+
+assert ssl('zazbz[bzb]cdb')
+assert ssl('aba[bab]xyz')
+assert not ssl('xyx[xyx]xyx')
+assert ssl('aaa[kek]eke')
+
 lines = sys.stdin.readlines()
+
 print 'part a:', sum(1 for line in lines if verify(line))
+print 'part b:', sum(1 for line in lines if ssl(line))
