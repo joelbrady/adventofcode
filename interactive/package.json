@@ -1,0 +1,17 @@
+{
+  "name": "advent-interactive",
+  "version": "0.0.1",
+  "description": "Interactive/animated implementations of Advent of Code",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "webpack": "webpack",
+    "dev": "webpack-dev-server"
+  },
+  "author": "Joel Brady",
+  "license": "MIT",
+  "dependencies": {
+    "webpack": "^1.14.0",
+    "webpack-dev-server": "^1.16.2"
+  }
+}
