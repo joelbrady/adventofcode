@@ -3,6 +3,7 @@
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 import qualified Data.Text.Read as R
+import qualified Debug.Trace as Trace
 
 data Direction = L | R deriving Show
 data Orientation = N | S | E | W deriving Show
@@ -54,9 +55,9 @@ f (State c o v m) (Instruction d n) =
                         newCoordinates = moveForward c newOrientation n
                         newVisitedSet  = Set.insert newCoordinates v
                         maybeVisitedTwice = if Set.member newCoordinates v then
-                                                Just newCoordinates
+                                                Trace.trace "blah" $ Just newCoordinates
                                             else
-                                                Nothing
+                                                Trace.trace "nothing" Nothing
                     in State newCoordinates newOrientation newVisitedSet maybeVisitedTwice
 
 initialCoordinates = Coordinates (0, 0)
@@ -77,7 +78,7 @@ main = do
     let moves = parseInput $ Text.pack rawInput
     let endPosition = finalPosition startState moves
     let distance = distanceFromOrigin $ getCurrentCoordinates endPosition
-    let solution = getVistedSet endPosition
+    let solution = getSolution endPosition
     putStrLn $ show solution
 
 finalPosition :: State -> [Instruction] -> State
