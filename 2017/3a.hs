@@ -37,4 +37,4 @@ manhattan :: Vec2 -> Int
 manhattan (Vec2 x y) = abs(x) + abs(y)
 
 getCoords :: Int -> Vec2
-getCoords n = fst $ Map.elemAt 0 $ Map.filter (\v -> v == n) $ generateMatrix n
+getCoords n = Map.foldrWithKey (\k v accum -> if v == n then k else accum) (Vec2 0 0) $ generateMatrix n
