@@ -10,8 +10,7 @@ main = do
 data State = State {pc :: Int, ram :: Sequence.Seq Int, count :: Int} deriving (Show)
 
 initialState :: [Int] -> State
-initialState ram = State { pc = 0, ram = ramSeq, count = 0 }
-    where ramSeq = Sequence.fromList ram
+initialState ram = State { pc = 0, ram = (Sequence.fromList ram), count = 0 }
 
 testRam :: [Int]
 testRam = [0, 3, 0, 1, -3]
@@ -22,9 +21,10 @@ run state
     | otherwise = run (State nextPc newRam (count + 1))
     where (State pc ram count) = state
           maxMemoryAddress = (Sequence.length ram) - 1
-          instruction = (ram `Sequence.index` pc)
-          nextPc = pc + instruction
-          newRam = Sequence.adjust' (+ 1) pc ram 
+          jumpSize = (ram `Sequence.index` pc)
+          nextPc = pc + jumpSize
+          increment = if jumpSize >= 3 then -1 else 1
+          newRam = Sequence.adjust' (+ increment) pc ram 
 
 replaceIndex :: [Int] -> Int -> Int -> [Int]
 replaceIndex xs i x = replaceIndex' xs 0 i x
