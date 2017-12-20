@@ -1,16 +1,27 @@
 import Debug.Trace
 
-matches :: String -> (String, Int)
-matches ""     = ("", 0)
-matches (s:"") = (s:"", 0)
-matches (s:ss) = trace ss $ case leftOver of "" -> ("", 0)
-                                             x:xs -> if s `match` x then (xs, c + 1) else (x:xs, c)
-    where (leftOver, c) = matches ss
+data Tree = Group [Tree] | Garbage deriving Show
 
-match :: Char -> Char -> Bool
-match '(' ')' = True
-match _ _ = False
+scoreTree :: Tree -> Int
+scoreTree t = scoreTree' 1 t
 
-data Tree a = Leaf a | Node a (Tree a) (Tree a)
+scoreTree' :: Int -> Tree -> Int
+scoreTree' _ Garbage = 0
+scoreTree' depth t = depth + (sum $ map (scoreTree' (depth + 1)) children)
+    where (Group children) = t
 
-insert :: Ord a => a -> Tree a -> Tree a
+parse :: String -> Tree
+parse s = t
+    where (_, t) = parse' [] [] s
+
+parse' :: [Char] -> [Tree] -> String -> (String, Tree)
+parse' _ [] "" = ("", Garbage)
+parse' _ ts "" = ("", Group ts)
+parse' stack children ('{':cs) = (remainder, Group (children ++ (nodes t)))
+    where (remainder, t) = parse' ('{':stack) [] cs
+parse' ('{':stack) t ('}':cs) = (cs, Group t)
+--parse' stack t ('!':_:cs) = parse' stack t cs
+
+nodes :: Tree -> [Tree]
+nodes (Group n) = n
+nodes _ = []
