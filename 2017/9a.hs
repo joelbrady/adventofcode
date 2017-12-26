@@ -18,18 +18,15 @@ parse' :: [Char] -> [Tree] -> String -> (String, [Tree])
 parse' [] [] "" = ("", [])
 
 -- start of a group
-parse' stack children ('{':cs) = (remainder, [Group ts])
+parse' stack siblings ('{':cs) = (remainder, ts)
     where (remainder, ts) = parse' ('{':stack) [] cs
 
 -- end of a group
-parse' ('{':stack) t ('}':cs) = parse' stack t cs
+parse' ('{':stack) siblings ('}':cs) = (remainder, [Group ts])
+    where (remainder, ts) = parse' stack [] cs
 
--- TODO comma separated groups
-
+parse' stack siblings (',':cs) = (remainder, siblings ++ ts)
+    where (remainder, ts) = parse' stack ts cs
 
 -- only within garbage
 --parse' stack t ('!':_:cs) = parse' stack t cs
-
-nodes :: Tree -> [Tree]
-nodes (Group n) = n
-nodes _ = []
