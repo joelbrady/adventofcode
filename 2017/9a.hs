@@ -12,14 +12,22 @@ scoreTree' depth t = depth + (sum $ map (scoreTree' (depth + 1)) children)
 
 parse :: String -> Tree
 parse s = t
-    where (_, t) = parse' [] [] s
+    where (_, [t]) = parse' [] [] s
 
-parse' :: [Char] -> [Tree] -> String -> (String, Tree)
-parse' _ [] "" = ("", Garbage)
-parse' _ ts "" = ("", Group ts)
-parse' stack children ('{':cs) = (remainder, Group (children ++ (nodes t)))
-    where (remainder, t) = parse' ('{':stack) [] cs
-parse' ('{':stack) t ('}':cs) = (cs, Group t)
+parse' :: [Char] -> [Tree] -> String -> (String, [Tree])
+parse' [] [] "" = ("", [])
+
+-- start of a group
+parse' stack children ('{':cs) = (remainder, [Group ts])
+    where (remainder, ts) = parse' ('{':stack) [] cs
+
+-- end of a group
+parse' ('{':stack) t ('}':cs) = parse' stack t cs
+
+-- TODO comma separated groups
+
+
+-- only within garbage
 --parse' stack t ('!':_:cs) = parse' stack t cs
 
 nodes :: Tree -> [Tree]
