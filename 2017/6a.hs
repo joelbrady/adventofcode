@@ -29,7 +29,7 @@ run' list count seen
 redistribute :: Seq.Seq Int -> Seq.Seq Int
 redistribute list = redistribute' n i newList
     where n = maximum list
-          i = case Seq.elemIndexL list of Just i' -> i'
+          i = case Seq.elemIndexL n list of Just i' -> i'
           newList = Seq.adjust (\_ -> 0) i list
 
 redistribute' :: Int -> Int -> Seq.Seq Int -> Seq.Seq Int
