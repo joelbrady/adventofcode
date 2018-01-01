@@ -14,19 +14,19 @@ parse :: String -> Tree
 parse s = t
     where (_, [t]) = parse' [] [] s
 
-parse' :: [Char] -> [Tree] -> String -> (String, [Tree])
+parse' :: [Tree] -> -> String -> (String, [Tree])
 parse' [] [] "" = ("", [])
 
 -- start of a group
-parse' stack siblings ('{':cs) = (remainder, ts)
-    where (remainder, ts) = parse' ('{':stack) [] cs
+parse' stack ('{':cs) = (remainder, ts)
+    where (remainder, ts) = parse' (Group []:stack) cs
 
 -- end of a group
-parse' ('{':stack) siblings ('}':cs) = (remainder, [Group ts])
-    where (remainder, ts) = parse' stack [] cs
+parse' (h:stack) ('}':cs) = (remainder, [Group ts])
+    where (remainder, ts) = parse' stack cs
 
-parse' stack siblings (',':cs) = (remainder, siblings ++ ts)
-    where (remainder, ts) = parse' stack ts cs
+-- parse' stack (',':cs) = (remainder, ts)
+--     where (remainder, ts) = parse' stack cs
 
 -- only within garbage
 --parse' stack t ('!':_:cs) = parse' stack t cs
