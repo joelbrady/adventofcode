@@ -83,29 +83,3 @@ fun nTimes(s: String, n: Int): Boolean {
         .values
         .contains(n)
 }
-
-fun assertThat(a: Any): Assertion {
-    return Assertion(a)
-}
-
-class Assertion(private val a: Any?) {
-    fun isTrue() {
-        if (a != true) {
-            throw AssertionError("$a is not true")
-        }
-    }
-
-    fun isFalse() {
-        if (a != false) {
-            throw AssertionError("$a is not false")
-        }
-    }
-
-    fun isEqualTo(b: Any?) {
-        if (a != b) {
-            throw AssertionError("$a is not equal to $b")
-        }
-    }
-}
-
-class AssertionError(message: String) : Exception(message)
