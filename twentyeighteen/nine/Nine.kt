@@ -1,10 +1,14 @@
 package twentyeighteen.nine
 
 import assertThat
+import java.math.BigInteger
 import java.util.PriorityQueue
+
+const val debug = false
 
 fun main() {
     tests()
+    mutableTests()
     examples()
     problem()
 }
@@ -13,7 +17,7 @@ fun problem() {
     // 465 players; last marble is worth 71498 points
     val answerA = playGame(465, 71498)
     println("Part A: $answerA")
-    val answerB = playGame(465, 71498 * 100)
+    val answerB = playMutableGame(465, 71498 * 100)
     println("Part B: $answerB")
 }
 
@@ -57,6 +61,16 @@ fun tests() {
 }
 
 fun playGame(numPlayers: Int, lastMarble: Int): Int {
+    val a = playImmutableGame(numPlayers, lastMarble)
+    if (debug) {
+        println("\nStarting mutable game")
+    }
+    val b = playMutableGame(numPlayers, lastMarble).toInt()
+    assertThat(a).isEqualTo(b)
+    return a
+}
+
+fun playImmutableGame(numPlayers: Int, lastMarble: Int): Int {
     if (lastMarble < 1) {
         throw IllegalArgumentException("expect there to be at least 2 marbles in the game")
     }
@@ -74,6 +88,9 @@ tailrec fun turn(state: MarblesState, marbles: List<Int>, scores: Map<Int, Int>,
     val marble = marbles.first()
     val remainingMarbles = marbles.subList(1, marbles.size)
     val (nextState, toScore) = state.insert(marble)
+    if (debug && toScore.isNotEmpty()) {
+        println("Player $currentPlayer scores $toScore")
+    }
     val newScores = scores.plus(currentPlayer to (scores.getOrDefault(currentPlayer, 0) + toScore.sum()))
     val nextPlayer = if (currentPlayer < maxPlayerNum) currentPlayer + 1 else 1
     return turn(nextState, remainingMarbles, newScores, nextPlayer)
@@ -86,7 +103,7 @@ fun parseExampleLine(s: String) = s
     .toList()
     .map { it.toInt() }
 
-data class MarblesState(val marbles: List<Int>, val current: Int) {
+data class MarblesState(val marbles: List<Int>, val current: Int) : Snapshotable {
     data class InsertionResult(val state: MarblesState, val marblesToScore: Set<Int>)
 
     fun insert(marble: Int): InsertionResult {
@@ -107,6 +124,10 @@ data class MarblesState(val marbles: List<Int>, val current: Int) {
             return InsertionResult(newState, setOf())
         }
     }
+
+    override fun snapshot(): List<Int> {
+        return marbles.subList(current, marbles.size).plus(marbles.subList(0, current))
+    }
 }
 
 fun initialState(): MarblesState = MarblesState(listOf(0), 0)
@@ -117,4 +138,91 @@ fun Int.nonNegativeMod(modulus: Int): Int {
         n += modulus
     }
     return n
+}
+
+class MutableMarbles : Snapshotable {
+    private class Node(val value: Int) {
+        var left: Node = this
+        var right: Node = this
+    }
+
+    private var current = Node(0)
+    init {
+        current.left = current
+        current.right = current
+    }
+
+    // returns the set of marbles to be scored
+    fun insert(marble: Int): Set<Int> {
+        if (marble % 23 == 0) {
+            var n = current
+            for (ignored in 1..7) {
+                n = n.left
+            }
+            current = n.right
+            n.left.right = n.right
+            n.right.left = n.left
+            return setOf(n.value, marble)
+        } else {
+            val n = current.right
+            val newNode = Node(marble)
+            newNode.left = n
+            newNode.right = n.right
+            n.right.left = newNode
+            n.right = newNode
+            current = newNode
+            return setOf()
+        }
+    }
+
+    override fun snapshot(): List<Int> {
+        val list: MutableList<Int> = mutableListOf(current.value)
+        var n = current.right
+        while (n != current) {
+            list.add(n.value)
+            n = n.right
+        }
+        return list
+    }
+}
+
+fun playMutableGame(numPlayers: Int, lastMarble: Int): BigInteger {
+    if (lastMarble < 1) {
+        throw IllegalArgumentException("expect there to be at least 2 marbles in the game")
+    }
+    val scores: MutableMap<Int, BigInteger> = mutableMapOf()
+    val marbles: List<Int> = (1..lastMarble).toList()
+
+    val m = MutableMarbles()
+    var currentPlayer = 1
+
+    for (marble in marbles) {
+        val toScore = m.insert(marble)
+        if (debug && toScore.isNotEmpty()) {
+            println("Player $currentPlayer scores $toScore")
+        }
+        scores[currentPlayer] = scores.getOrDefault(currentPlayer, BigInteger.ZERO) + toScore.sum().toBigInteger()
+        currentPlayer++
+        if (currentPlayer > numPlayers) {
+            currentPlayer = 1
+        }
+    }
+
+    return scores.values.max() ?: TODO()
+}
+
+fun mutableTests() {
+    val m = MutableMarbles()
+    val a = m.insert(1)
+    assertThat(a.isEmpty()).isTrue()
+    for (marble in 2..22) {
+        val b = m.insert(marble)
+        assertThat(b.isEmpty()).isTrue()
+    }
+    val c = m.insert(23)
+    assertThat(c).isEqualTo(setOf(23, 9))
+}
+
+interface Snapshotable {
+    fun snapshot(): List<Int>
 }

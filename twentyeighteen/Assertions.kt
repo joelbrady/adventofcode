@@ -17,7 +17,7 @@ class Assertion(private val a: Any?) {
 
     fun isEqualTo(b: Any?) {
         if (a != b) {
-            throw AssertionError("$a is not equal to $b")
+            throw AssertionError("Expected $a to equal $b")
         }
     }
 }
