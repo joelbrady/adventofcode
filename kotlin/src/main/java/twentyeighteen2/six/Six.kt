@@ -1,4 +1,4 @@
-package twentyeighteen.six
+package twentyeighteen2.six
 
 import assertThat
 import java.io.File
