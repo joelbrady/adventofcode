@@ -1,7 +1,10 @@
 use std::io::Read;
+use std::collections::HashSet;
 
 fn main() {
-    let track = Tracks::from_str(example_input().as_str());
+    let mut track = Tracks::from_str(example_input().as_str());
+    track.display();
+    track.step();
     track.display();
 }
 
@@ -49,6 +52,45 @@ impl Tracks {
         } else {
             Some('X')
         }
+    }
+
+    fn step(&mut self) {
+        for i in 0..self.carts.len() {
+            let cart = &self.carts[i];
+            let (x, y) = cart.position;
+            let (x, y) = match cart.direction {
+                Direction::North => (x, y - 1),
+                Direction::South => (x, y + 1),
+                Direction::East => (x + 1, y),
+                Direction::West => (x - 1, y),
+            };
+            let direction = new_direction(&cart.direction, &self.tracks[y][x]);
+            let cart = Cart { position: (x, y), direction };
+            self.carts[i] = cart;
+        }
+    }
+
+    fn has_collision(&self) -> bool {
+        let mut seen: HashSet<&(usize, usize)> = HashSet::new();
+        for cart in &self.carts {
+            let pos = cart.position;
+            if seen.contains(&pos) {
+                return true
+            } else {
+                seen.insert(&cart.position);
+                continue
+            }
+        }
+
+        false
+    }
+}
+
+fn new_direction(d: &Direction, track: &Track) -> Direction {
+    match track {
+        Track::LeftCurve => match direction {
+            Direction::North => Direction::West
+        },
     }
 }
 
