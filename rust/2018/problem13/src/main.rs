@@ -1,11 +1,11 @@
 use std::io::Read;
 use std::collections::HashSet;
+use std::cmp::Ordering::{Greater, Less, Equal};
 
 fn main() {
-    let mut track = Tracks::from_str(example_input().as_str());
-    track.display();
-    track.step();
-    track.display();
+    let (x, y) = solve(puzzle_input().as_str());
+
+    println!("The first collision is at {},{}", x, y);
 }
 
 struct Tracks {
@@ -55,61 +55,137 @@ impl Tracks {
     }
 
     fn step(&mut self) {
-        for i in 0..self.carts.len() {
+        use Direction::*;
+
+        let mut sorted_carts: Vec<Cart> = self.carts.to_vec();
+        sorted_carts.sort_by(|a, b| {
+            let (ax, ay) = a.position;
+            let (bx, by) = b.position;
+            if ay > by {
+                Greater
+            } else if ay < by {
+                Less
+            } else {
+                if ax > bx {
+                    Greater
+                } else if ax < bx {
+                    Less
+                } else {
+                    Equal
+                }
+            }
+        });
+
+        for i in 0..sorted_carts.len() {
             let cart = &self.carts[i];
             let (x, y) = cart.position;
             let (x, y) = match cart.direction {
-                Direction::North => (x, y - 1),
-                Direction::South => (x, y + 1),
-                Direction::East => (x + 1, y),
-                Direction::West => (x - 1, y),
+                North => (x, y - 1),
+                South => (x, y + 1),
+                East => (x + 1, y),
+                West => (x - 1, y),
             };
-            let direction = new_direction(&cart.direction, &self.tracks[y][x]);
-            let cart = Cart { position: (x, y), direction };
-            self.carts[i] = cart;
-        }
-    }
-
-    fn has_collision(&self) -> bool {
-        let mut seen: HashSet<&(usize, usize)> = HashSet::new();
-        for cart in &self.carts {
-            let pos = cart.position;
-            if seen.contains(&pos) {
-                return true
-            } else {
-                seen.insert(&cart.position);
-                continue
+            let (direction, choice) = new_direction(&self.tracks[y][x], &cart.direction, cart.choice);
+            let cart = Cart{ position: (x, y), direction, choice };
+            sorted_carts[i] = cart;
+            if let Some((x, y)) = find_collision(&sorted_carts) {
+                break
             }
         }
 
-        false
+        self.carts = sorted_carts;
     }
+
 }
 
-fn new_direction(d: &Direction, track: &Track) -> Direction {
+fn find_collision(carts: &Vec<Cart>) -> Option<(usize, usize)> {
+    let mut seen: HashSet<&(usize, usize)> = HashSet::new();
+    for cart in carts {
+        let pos = cart.position;
+        if seen.contains(&pos) {
+            return Some(pos)
+        } else {
+            seen.insert(&cart.position);
+            continue
+        }
+    }
+
+    None
+}
+
+fn new_direction(track: &Track, direction: &Direction, choice: i32) -> (Direction, i32) {
+    use Direction::*;
+    use Track::*;
+
     match track {
-        Track::LeftCurve => match direction {
-            Direction::North => Direction::West
+        LeftCurve => (match direction {
+            North => West,
+            South => East,
+            East => South,
+            West => North,
+        }, choice),
+        RightCurve => (match direction {
+            North => East,
+            East => North,
+            South => West,
+            West => South,
+        }, choice),
+        Intersection => {
+            let choice = choice % 3;
+            (match choice {
+                0 => turn_left(&direction),
+                1 => direction.clone(),
+                2 => turn_right(&direction),
+                _ => unimplemented!(),
+            }, choice + 1)
         },
+        _ => (direction.clone(), choice),
     }
 }
 
+fn turn_left(direction: &Direction) -> Direction {
+    use Direction::*;
+
+    match direction {
+        North => West,
+        West => South,
+        South => East,
+        East => North,
+    }
+}
+
+fn turn_right(direction: &Direction) -> Direction {
+    use Direction::*;
+
+    match direction {
+        North => East,
+        East => South,
+        South => West,
+        West => North,
+    }
+}
+
+#[derive(Clone, Copy)]
 struct Cart {
     position: (usize, usize),
     direction: Direction,
+    choice: i32,
 }
 
 impl Cart {
     fn as_char(&self) -> char {
+        use Direction::*;
+
         match self.direction {
-            Direction::North => '^',
-            Direction::South => 'v',
-            Direction::East => '>',
-            Direction::West => '<',
+            North => '^',
+            South => 'v',
+            East => '>',
+            West => '<',
         }
     }
 }
 
+#[derive(Copy, Clone)]
 enum Direction {
     North,
     East,
@@ -132,9 +208,21 @@ enum Track {
     Empty,
 }
 
-// given a
-fn solve(input: &str) -> (i32, i32) {
-    unimplemented!()
+fn solve(input: &str) -> (usize, usize) {
+    let mut tracks = Tracks::from_str(input);
+
+    loop {
+        let collision = find_collision(&tracks.carts);
+        match collision {
+            Some(pos) => {
+                tracks.display();
+                return pos
+            },
+            None => {
+                tracks.step();
+            }
+        }
+    }
 }
 
 fn get_input_arrays(input: &str) -> Vec<Vec<char>> {
@@ -149,7 +237,15 @@ fn get_input_arrays(input: &str) -> Vec<Vec<char>> {
 }
 
 fn example_input() -> String {
-    let mut file = std::fs::File::open("./example.input").unwrap();
+    get_input("./example.input")
+}
+
+fn puzzle_input() -> String {
+    get_input("./input")
+}
+
+fn get_input(filename: &str) -> String {
+    let mut file = std::fs::File::open(filename).unwrap();
     let mut input = String::new();
     file.read_to_string(&mut input).expect("problem reading file");
     input
@@ -164,24 +260,28 @@ fn parse_tracks(input: &Vec<Vec<char>>) -> Vec<Vec<Track>> {
 }
 
 fn char_to_track(c: &char) -> Track {
+    use Track::*;
+
     match c {
-        '|' => Track::VerticalStraight,
-        '-' => Track::HorizontalStraight,
-        '+' => Track::Intersection,
-        '/' => Track::RightCurve,
-        '\\' => Track::LeftCurve,
-        _ => Track::Empty
+        '|' => VerticalStraight,
+        '-' => HorizontalStraight,
+        '+' => Intersection,
+        '/' => RightCurve,
+        '\\' => LeftCurve,
+        _ => Empty
     }
 }
 
 fn track_to_char(track: &Track) -> char {
+    use Track::*;
+
     match track {
-        Track::VerticalStraight => '|',
-        Track::HorizontalStraight => '-',
-        Track::Intersection => '+',
-        Track::RightCurve => '/',
-        Track::LeftCurve => '\\',
-        Track::Empty => ' ',
+        VerticalStraight => '|',
+        HorizontalStraight => '-',
+        Intersection => '+',
+        RightCurve => '/',
+        LeftCurve => '\\',
+        Empty => ' ',
     }
 }
 
@@ -194,6 +294,8 @@ fn track_under_cart(cart: char) -> char {
 }
 
 fn find_carts_and_fill_track(tracks: &mut Vec<Vec<char>>) -> Vec<Cart> {
+    use Direction::*;
+
     let rows = tracks.len();
     let cols = tracks[0].len();
     let mut carts: Vec<Cart> = Vec::new();
@@ -202,15 +304,15 @@ fn find_carts_and_fill_track(tracks: &mut Vec<Vec<char>>) -> Vec<Cart> {
         for x in 0..cols {
             let tile = tracks[y][x];
             let direction: Option<Direction> = match tile {
-                '>' => Some(Direction::East),
-                '<' => Some(Direction::West),
-                '^' => Some(Direction::North),
-                'v' => Some(Direction::South),
+                '>' => Some(East),
+                '<' => Some(West),
+                '^' => Some(North),
+                'v' => Some(South),
                 _ => None,
             };
             match direction {
                 Some(direction) => {
-                    let cart = Cart { direction, position: (x, y) };
+                    let cart = Cart { direction, position: (x, y), choice: 0 };
                     carts.push(cart); // push little cart!
                     tracks[y][x] = track_under_cart(tile);
                 }
@@ -242,10 +344,12 @@ mod test {
 
     #[test]
     fn test_parse_tracks() {
+        use Track::*;
+
         let input = vec![vec!['\\', '/', '/'], vec!['-', '+', '|']];
         assert_eq!(parse_tracks(&input)[..], vec![
-            vec![Track::LeftCurve, Track::RightCurve, Track::RightCurve],
-            vec![Track::HorizontalStraight, Track::Intersection, Track::VerticalStraight]
+            vec![LeftCurve, RightCurve, RightCurve],
+            vec![HorizontalStraight, Intersection, VerticalStraight]
         ][..]);
     }
 }
