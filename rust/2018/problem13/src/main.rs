@@ -77,7 +77,7 @@ impl Tracks {
         });
 
         for i in 0..sorted_carts.len() {
-            let cart = &self.carts[i];
+            let cart = &sorted_carts[i];
             let (x, y) = cart.position;
             let (x, y) = match cart.direction {
                 North => (x, y - 1),
@@ -89,6 +89,9 @@ impl Tracks {
             let cart = Cart{ position: (x, y), direction, choice };
             sorted_carts[i] = cart;
             if let Some((x, y)) = find_collision(&sorted_carts) {
+//                if remove_collisions {
+//
+//                }
                 break
             }
         }
