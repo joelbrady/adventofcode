@@ -1,11 +1,11 @@
 use nom::bytes::complete::tag;
-use nom::character::complete::{char, digit1, multispace0, multispace1};
-use nom::combinator::opt;
+use nom::character::complete::{char, multispace1};
 use nom::IResult;
 use nom::sequence::separated_pair;
 use std::io::{stdin, BufRead};
 use std::fmt::{Formatter, Error};
 use std::collections::HashMap;
+use parse::parse_i32;
 
 fn main() -> std::io::Result<()> {
     let lines: Vec<String> = stdin()
@@ -177,18 +177,6 @@ fn parse_pair(input: &str) -> IResult<&str, (i32, i32)> {
     Ok((input, (x, y)))
 }
 
-fn parse_i32(input: &str) -> IResult<&str, i32> {
-    let (input, _) = multispace0(input)?;
-    let (input, sign) = opt(char('-'))(input)?;
-    let (input, digits) = digit1(input)?;
-    let n: i32 = digits.parse().unwrap();
-    let n: i32 = match sign {
-        Some(_) => -1 * n,
-        None => n
-    };
-    Ok((input, n))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,13 +187,6 @@ mod tests {
         let result = parse_point(example);
         let expected = Point::create(Position { x: 9, y: 1 }, Vector { x: 0, y: 2 });
         assert_eq!(result, Ok(("", expected)))
-    }
-
-    #[test]
-    fn test_parse_i32() {
-        let result = parse_i32("-42, abc");
-        let expected = Ok((", abc", -42));
-        assert_eq!(result, expected)
     }
 
     #[test]

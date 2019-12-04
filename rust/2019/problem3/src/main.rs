@@ -1,9 +1,10 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
+use std::io::{Read, stdin};
 
-use nom::character::complete::{anychar, char, digit1, multispace0};
-use nom::combinator::opt;
+use nom::character::complete::anychar;
 use nom::IResult;
-use std::io::{stdin, Read};
+
+use parse::parse_i32;
 
 fn main() {
     let input = get_input();
@@ -50,18 +51,6 @@ fn parse_line(input: &str) -> IResult<&str, Line> {
     let (input, dist) = parse_i32(input)?;
 
     Ok((input, Line { direction: dir, distance: dist }))
-}
-
-fn parse_i32(input: &str) -> IResult<&str, i32> {
-    let (input, _) = multispace0(input)?;
-    let (input, sign) = opt(char('-'))(input)?;
-    let (input, digits) = digit1(input)?;
-    let n: i32 = digits.parse().unwrap();
-    let n: i32 = match sign {
-        Some(_) => -1 * n,
-        None => n
-    };
-    Ok((input, n))
 }
 
 fn parse_direction(s: &str) -> IResult<&str, Direction> {
