@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use nom::character::complete::{anychar, char, digit1, multispace0};
 use nom::combinator::opt;
@@ -8,9 +8,10 @@ use std::io::{stdin, Read};
 fn main() {
     let input = get_input();
     let input = parse(&input);
-    let solution = solve(input);
+    let (a, b) = solve(&input);
 
-    println!("The solution to part 1 is {}", solution);
+    println!("The solution to part 1 is {}", a);
+    println!("The solution to part 2 is {}", b);
 }
 
 fn get_input() -> String {
@@ -117,43 +118,53 @@ impl Direction {
     }
 }
 
-fn solve(input: Input) -> i32 {
-    let mut visited_a: HashSet<(i32, i32)> = HashSet::new();
+fn solve(input: &Input) -> (i32, i32) {
+    let mut visited_a: HashMap<(i32, i32), i32> = HashMap::new();
     let (mut x, mut y) = (0, 0);
+    let mut distance = 0;
 
-    for line in input.a.path {
+    for line in &input.a.path {
         let (dx, dy) = line.direction.to_vector();
         for _ in 0..line.distance {
             x += dx;
             y += dy;
-//            println!("a visited {},{}", x, y);
-            visited_a.insert((x, y));
+            distance += 1;
+            visited_a.insert((x, y), distance);
         }
     }
 
-    let mut visited_b: HashSet<(i32, i32)> = HashSet::new();
+    let mut visited_b: HashMap<(i32, i32), i32> = HashMap::new();
     let (mut x, mut y) = (0, 0);
+    let mut distance = 0;
 
-
-    for line in input.b.path {
+    for line in &input.b.path {
         let (dx, dy) = line.direction.to_vector();
         for _ in 0..line.distance {
             x += dx;
             y += dy;
-//            println!("b visited {},{}", x, y);
-            visited_b.insert((x, y));
+            distance += 1;
+            visited_b.insert((x, y), distance);
         }
     }
 
-//    let d: Vec<&(i32, i32)> = visited_a.intersection(&visited_b).collect();
-//    println!("{:?}", d);
+    let set_a = visited_a.keys().collect::<HashSet<&(i32, i32)>>();
+    let set_b = visited_b.keys().collect::<HashSet<&(i32, i32)>>();
 
-    let intersection: i32 = visited_a.intersection(&visited_b)
+    let intersection: i32 = set_a.intersection(&set_b)
         .map(|(a, b)| manhattan(*a, *b))
         .min()
         .unwrap();
 
-    intersection
+    let shortest_combined_distance = set_a.intersection(&set_b)
+        .map(|(x, y)| {
+            let a = visited_a.get(&(*x, *y)).unwrap();
+            let b = visited_b.get(&(*x, *y)).unwrap();
+            a + b
+        })
+        .min()
+        .unwrap();
+
+    (intersection, shortest_combined_distance)
 }
 
 fn manhattan(x: i32, y: i32) -> i32 {
@@ -222,7 +233,16 @@ mod test {
     #[test]
     fn solve_example() {
         let input = parse("R8,U5,L5,D3\nU7,R6,D4,L4");
-        let answer = solve(input);
-        assert_eq!(answer, 6)
+        let answer = solve(&input);
+        assert_eq!(answer, (6, 30))
+    }
+
+    #[test]
+
+    fn solve_part2_example_b() {
+        let input = "R75,D30,R83,U83,L12,D49,R71,U7,L72\nU62,R66,U55,R34,D71,R55,D58,R83";
+        let input = parse(input);
+        let answer = solve(&input);
+        assert_eq!(answer, (159, 610))
     }
 }
