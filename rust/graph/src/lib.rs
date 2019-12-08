@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+#[derive(Debug)]
 pub struct Graph<N: Eq + Hash + Clone> {
     edges: HashMap<N, Vec<N>>,
 }
