@@ -5,9 +5,14 @@ name = "input"
 version = "0.1.0"
 
 [[package]]
+name = "intcode"
+version = "0.1.0"
+
+[[package]]
 name = "problem7"
 version = "0.1.0"
 dependencies = [
  "input 0.1.0",
+ "intcode 0.1.0",
 ]
 
