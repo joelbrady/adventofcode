@@ -1,4 +1,4 @@
-use intcode::{parse_program, Machine};
+use intcode::{parse_program, Machine, StoppedState};
 use input::get_input;
 
 fn main() {
@@ -15,13 +15,21 @@ fn main() {
 fn solve(s: &str) -> i32 {
     let parsed_input = parse_program(s);
     let mut m = Machine::new(&parsed_input, &vec![1]);
-    m.run_until_halt()
+    let state = m.run();
+    match state {
+        StoppedState::Halted(output) => output,
+        _ => unimplemented!()
+    }
 }
 
 fn solve2(s: &str) -> i32 {
     let parsed_input = parse_program(s);
     let mut m = Machine::new(&parsed_input, &vec![5]);
-    m.run_until_halt()
+    let state = m.run();
+    match state {
+        StoppedState::Halted(output) => output,
+        _ => unimplemented!()
+    }
 }
 
 #[cfg(test)]

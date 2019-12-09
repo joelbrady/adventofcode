@@ -14,7 +14,7 @@ fn main() {
 fn solve(s: &str, noun: i32, verb: i32) -> i32 {
     let parsed_input = parse_program(s);
     let mut m = Machine::new_with_noun_verb(&parsed_input, noun, verb);
-    m.run_until_halt();
+    m.run();
     m.get_value_at_addr(0)
 }
 
@@ -27,7 +27,7 @@ fn solve_b(s: &str) -> i32 {
         for verb in 0..100 {
             let mut m = Machine::new_with_noun_verb(&parsed_input, noun, verb);
 
-            m.run_until_halt();
+            m.run();
             let a = m.get_value_at_addr(0);
             if a == EXPECTED {
                 answer = (100 * noun) + verb

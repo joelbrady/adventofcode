@@ -1,5 +1,5 @@
 use input::get_input;
-use intcode::{parse_program, Machine};
+use intcode::{parse_program, Machine, StoppedState};
 
 fn main() {
     let input = get_input("input");
@@ -49,7 +49,11 @@ fn run_sequence(program: &[i32], sequence: &[i32]) -> i32 {
     let mut signal = 0;
     for seq in sequence {
         let mut m = Machine::new(program, &vec![*seq, signal]);
-        signal = m.run_until_halt();
+        if let StoppedState::Halted(output) = m.run() {
+            signal = output;
+        } else {
+            panic!("unexpected stop state");
+        }
     }
     signal
 }

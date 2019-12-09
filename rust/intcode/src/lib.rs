@@ -21,18 +21,18 @@ impl Machine {
         m
     }
 
-    pub fn run_until_halt(&mut self) -> i32 {
+    pub fn run(&mut self) -> StoppedState {
+        use State::*;
+
         loop {
             let op = self.fetch(self.ip);
 //            println!("running {:?}", op);
-            let (halted, ip_update) = self.execute(&op);
-            self.update_ip(&ip_update);
-            match halted {
-                true => break,
-                _ => continue,
+            let state= self.execute(&op);
+            match state {
+                Running(ip_delta) => self.update_ip(&ip_delta),
+                Stopped(stopped_state) => return stopped_state,
             }
         }
-        self.output
     }
 
     pub fn get_value_at_addr(&self, addr: usize) -> i32 {
@@ -50,9 +50,11 @@ impl Machine {
         decode_opcode(&self.memory[addr..addr + 4])
     }
 
-    fn execute(&mut self, op: &Opcode) -> (bool, IpUpdate) {
+    fn execute(&mut self, op: &Opcode) -> State {
         use Opcode::*;
         use IpUpdate::*;
+        use State::*;
+        use StoppedState::*;
 
         if self.output != 0 {
             if let Halt = op {
@@ -67,25 +69,28 @@ impl Machine {
                 let b = self.evaluate_param(b);
 //                println!("{} + {} = {}", a, b, a + b);
                 self.write(c, a + b);
-                (false, Relative(4))
+                Running(Relative(4))
             }
             Multiply(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
 //                println!("{} * {} = {}", a, b, a * b);
                 self.write(c, a * b);
-                (false, Relative(4))
+                Running(Relative(4))
             }
             Input(addr) => {
+                if self.input.is_empty() {
+                    return Stopped(BlockedOnInput)
+                }
                 let a = self.input.remove(0);
                 self.write(addr, a);
-                (false, Relative(2))
+                Running(Relative(2))
             }
             Output(addr) => {
                 let value = self.evaluate_param(addr);
 //                println!("output {}", value);
                 self.output = value;
-                (false, Relative(2))
+                Running(Relative(2))
             }
             JumpIfTrue(a, b) => {
                 let a = self.evaluate_param(a);
@@ -95,7 +100,7 @@ impl Machine {
                 } else {
                     Relative(3)
                 };
-                (false, branch)
+                Running(branch)
             }
             JumpIfFalse(a, b) => {
                 let a = self.evaluate_param(a);
@@ -105,9 +110,9 @@ impl Machine {
                 } else {
                     Relative(3)
                 };
-                (false, branch)
+                Running(branch)
             }
-            Halt => (true, Relative(1)),
+            Halt => Stopped(Halted(self.output)),
             LessThan(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
@@ -117,7 +122,7 @@ impl Machine {
                     0
                 };
                 self.write(c, result);
-                (false, Relative(4))
+                Running(Relative(4))
             }
             EqualTo(a, b, c) => {
                 let a = self.evaluate_param(a);
@@ -128,7 +133,7 @@ impl Machine {
                     0
                 };
                 self.write(c, result);
-                (false, Relative(4))
+                Running(Relative(4))
             }
         }
     }
@@ -160,6 +165,17 @@ pub fn parse_program(s: &str) -> Vec<i32> {
         .into_iter()
         .map(|s| s.parse().unwrap())
         .collect()
+}
+
+enum State {
+    Running(IpUpdate),
+    Stopped(StoppedState),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum StoppedState {
+    Halted(i32),
+    BlockedOnInput,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -321,7 +337,7 @@ mod test {
     fn test_io() {
         let program = [3, 0, 4, 0, 99];
         let mut m = Machine::new(&program, &vec![42]);
-        let result = m.run_until_halt();
-        assert_eq!(result, 42)
+        let result = m.run();
+        assert_eq!(result, StoppedState::Halted(42))
     }
 }
