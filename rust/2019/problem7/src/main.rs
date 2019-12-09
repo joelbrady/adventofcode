@@ -7,16 +7,15 @@ fn main() {
 
     println!("The solution to part 1 is {}", solution);
 
-//    let part2 = solve2(&input);
+    let part2 = solve2(&input);
 
-//    println!("The solution to part 2 is {}", part2);
+    println!("The solution to part 2 is {}", part2);
 }
 
 fn permute<T>(ts: Vec<T>) -> Vec<Vec<T>>
     where T: Clone {
-
     if ts.len() == 1 {
-        return vec![ts]
+        return vec![ts];
     }
 
     let mut permutations: Vec<Vec<T>> = vec![];
@@ -45,6 +44,16 @@ fn solve(s: &str) -> i32 {
         .unwrap()
 }
 
+fn solve2(s: &str) -> i32 {
+    let program = parse_program(s);
+    let sequences: Vec<Vec<i32>> = permute(vec![5, 6, 7, 8, 9]);
+    sequences
+        .iter()
+        .map(|s| run_feedback_sequence(&program, s))
+        .max()
+        .unwrap()
+}
+
 fn run_sequence(program: &[i32], sequence: &[i32]) -> i32 {
     let mut signal = 0;
     for seq in sequence {
@@ -56,6 +65,40 @@ fn run_sequence(program: &[i32], sequence: &[i32]) -> i32 {
         }
     }
     signal
+}
+
+fn run_feedback_sequence(program: &[i32], sequence: &[i32]) -> i32 {
+    let mut ms: Vec<Box<Machine>> = vec![];
+    for i in 0..5 {
+        let mut m = Machine::new_feedback_mode(program);
+        m.input(sequence[i]);
+        ms.push(Box::new(m));
+    }
+
+    let mut input = 0;
+    let mut i = 0;
+    loop {
+        let machine_id = i % 5;
+        let m = ms[machine_id].as_mut();
+        m.input(input);
+        let state = m.run();
+        match state {
+            StoppedState::BlockedOnInput => {
+                input = m.output();
+                i += 1;
+                continue
+            },
+            StoppedState::Halted(output) => {
+                if machine_id != 4 {
+                    input = output;
+                    i += 1;
+                    continue
+                } else {
+                    return output
+                }
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -100,10 +143,36 @@ mod test {
     }
 
     #[test]
+    fn test_part2_example1() {
+        let input = "3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5";
+        let input = parse_program(input);
+        let sequence = vec![9, 8, 7, 6, 5];
+
+        let expected = 139629729;
+        let signal = run_feedback_sequence(&input, &sequence);
+        assert_eq!(signal, expected);
+    }
+
+    #[test]
+    fn test_part2_example2() {
+        let input = "3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10";
+        let input = parse_program(input);
+        let sequence = vec![9, 7, 8, 5, 6];
+
+        let expected = 18216;
+        let signal = run_feedback_sequence(&input, &sequence);
+        assert_eq!(signal, expected);
+    }
+
+    #[test]
     fn test_solutions() {
         let input = get_input("input");
         let solution = solve(&input);
 
         assert_eq!(solution, 87138);
+
+        let solution = solve2(&input);
+
+        assert_eq!(solution, 17279674);
     }
 }

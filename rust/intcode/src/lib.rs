@@ -3,6 +3,7 @@ pub struct Machine {
     memory: [i32; 10000],
     input: Vec<i32>,
     output: i32,
+    test_mode: bool,
 }
 
 impl Machine {
@@ -11,7 +12,7 @@ impl Machine {
         for i in 0..initial_memory.len() {
             memory[i] = initial_memory[i];
         }
-        Machine { ip: 0, memory, input: Vec::from(input), output: 0 }
+        Machine { ip: 0, memory, input: Vec::from(input), output: 0, test_mode: true }
     }
 
     pub fn new_with_noun_verb(initial_memory: &[i32], noun: i32, verb: i32) -> Machine {
@@ -19,6 +20,20 @@ impl Machine {
         m.memory[1] = noun;
         m.memory[2] = verb;
         m
+    }
+
+    pub fn new_feedback_mode(initial_memory: &[i32]) -> Machine {
+        let mut m = Machine::new(initial_memory, &vec![]);
+        m.test_mode = false;
+        m
+    }
+
+    pub fn input(&mut self, input: i32) {
+        self.input.push(input);
+    }
+
+    pub fn output(&self) -> i32 {
+        self.output
     }
 
     pub fn run(&mut self) -> StoppedState {
@@ -56,7 +71,7 @@ impl Machine {
         use State::*;
         use StoppedState::*;
 
-        if self.output != 0 {
+        if self.test_mode && self.output != 0 {
             if let Halt = op {
 //                println!("test passed")
             } else {
@@ -338,6 +353,7 @@ mod test {
         let program = [3, 0, 4, 0, 99];
         let mut m = Machine::new(&program, &vec![42]);
         let result = m.run();
+        assert_eq!(m.output(), 42);
         assert_eq!(result, StoppedState::Halted(42))
     }
 }
