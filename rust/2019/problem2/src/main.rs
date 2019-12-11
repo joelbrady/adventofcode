@@ -11,16 +11,16 @@ fn main() {
     println!("The solution to part 2 is {}", part_2);
 }
 
-fn solve(s: &str, noun: i32, verb: i32) -> i32 {
+fn solve(s: &str, noun: i64, verb: i64) -> i64 {
     let parsed_input = parse_program(s);
     let mut m = Machine::new_with_noun_verb(&parsed_input, noun, verb);
     m.run();
     m.get_value_at_addr(0)
 }
 
-const EXPECTED: i32 = 19690720;
+const EXPECTED: i64 = 19690720;
 
-fn solve_b(s: &str) -> i32 {
+fn solve_b(s: &str) -> i64 {
     let parsed_input = parse_program(s);
     let mut answer = 0;
     for noun in 0..100 {

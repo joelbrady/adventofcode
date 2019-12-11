@@ -34,9 +34,9 @@ fn permute<T>(ts: Vec<T>) -> Vec<Vec<T>>
     permutations
 }
 
-fn solve(s: &str) -> i32 {
+fn solve(s: &str) -> i64 {
     let program = parse_program(s);
-    let sequences: Vec<Vec<i32>> = permute(vec![0, 1, 2, 3, 4]);
+    let sequences: Vec<Vec<i64>> = permute(vec![0, 1, 2, 3, 4]);
     sequences
         .iter()
         .map(|s| run_sequence(&program, s))
@@ -44,9 +44,9 @@ fn solve(s: &str) -> i32 {
         .unwrap()
 }
 
-fn solve2(s: &str) -> i32 {
+fn solve2(s: &str) -> i64 {
     let program = parse_program(s);
-    let sequences: Vec<Vec<i32>> = permute(vec![5, 6, 7, 8, 9]);
+    let sequences: Vec<Vec<i64>> = permute(vec![5, 6, 7, 8, 9]);
     sequences
         .iter()
         .map(|s| run_feedback_sequence(&program, s))
@@ -54,7 +54,7 @@ fn solve2(s: &str) -> i32 {
         .unwrap()
 }
 
-fn run_sequence(program: &[i32], sequence: &[i32]) -> i32 {
+fn run_sequence(program: &[i64], sequence: &[i64]) -> i64 {
     let mut signal = 0;
     for seq in sequence {
         let mut m = Machine::new_test_mode(program, &vec![*seq, signal]);
@@ -67,7 +67,7 @@ fn run_sequence(program: &[i32], sequence: &[i32]) -> i32 {
     signal
 }
 
-fn run_feedback_sequence(program: &[i32], sequence: &[i32]) -> i32 {
+fn run_feedback_sequence(program: &[i64], sequence: &[i64]) -> i64 {
     let mut ms: Vec<Box<Machine>> = vec![];
     for i in 0..5 {
         let mut m = Machine::new_feedback_mode(program);
@@ -136,7 +136,7 @@ mod test {
     fn test_permute() {
         let a = vec![1, 2, 3];
         let expected = vec![vec![1, 2, 3], vec![1, 3, 2], vec![3, 2, 1], vec![3, 1, 2], vec![2, 1, 3], vec![2, 3, 1]];
-        let permutations: Vec<Vec<i32>> = permute(a);
+        let permutations: Vec<Vec<i64>> = permute(a);
         for v in expected {
             assert!(permutations.contains(&v), "{:?}", v);
         }

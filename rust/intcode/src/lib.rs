@@ -1,13 +1,13 @@
 pub struct Machine {
     ip: usize,
-    memory: [i32; 10000],
-    input: Vec<i32>,
-    output: Vec<i32>,
+    memory: [i64; 10000],
+    input: Vec<i64>,
+    output: Vec<i64>,
     test_mode: bool,
 }
 
 impl Machine {
-    pub fn new_test_mode(initial_memory: &[i32], input: &[i32]) -> Machine {
+    pub fn new_test_mode(initial_memory: &[i64], input: &[i64]) -> Machine {
         let mut memory = [0; 10000];
         for i in 0..initial_memory.len() {
             memory[i] = initial_memory[i];
@@ -15,24 +15,24 @@ impl Machine {
         Machine { ip: 0, memory, input: Vec::from(input), output: vec![], test_mode: true }
     }
 
-    pub fn new_with_noun_verb(initial_memory: &[i32], noun: i32, verb: i32) -> Machine {
+    pub fn new_with_noun_verb(initial_memory: &[i64], noun: i64, verb: i64) -> Machine {
         let mut m = Machine::new_test_mode(initial_memory, &vec![0]);
         m.memory[1] = noun;
         m.memory[2] = verb;
         m
     }
 
-    pub fn new_feedback_mode(initial_memory: &[i32]) -> Machine {
+    pub fn new_feedback_mode(initial_memory: &[i64]) -> Machine {
         let mut m = Machine::new_test_mode(initial_memory, &vec![]);
         m.test_mode = false;
         m
     }
 
-    pub fn input(&mut self, input: i32) {
+    pub fn input(&mut self, input: i64) {
         self.input.push(input);
     }
 
-    pub fn output(&mut self) -> i32 {
+    pub fn output(&mut self) -> i64 {
         self.output.remove(0)
     }
 
@@ -50,7 +50,7 @@ impl Machine {
         }
     }
 
-    pub fn get_value_at_addr(&self, addr: usize) -> i32 {
+    pub fn get_value_at_addr(&self, addr: usize) -> i64 {
         self.memory[addr]
     }
 
@@ -169,7 +169,7 @@ impl Machine {
         }
     }
 
-    fn write(&mut self, addr: &Parameter, value: i32) {
+    fn write(&mut self, addr: &Parameter, value: i64) {
         use Parameter::*;
 
         match addr {
@@ -181,7 +181,7 @@ impl Machine {
         }
     }
 
-    fn evaluate_param(&self, p: &Parameter) -> i32 {
+    fn evaluate_param(&self, p: &Parameter) -> i64 {
         use Parameter::*;
 
         match p {
@@ -191,7 +191,7 @@ impl Machine {
     }
 }
 
-pub fn parse_program(s: &str) -> Vec<i32> {
+pub fn parse_program(s: &str) -> Vec<i64> {
     s.split(',')
         .into_iter()
         .map(|s| s.parse().unwrap())
@@ -225,11 +225,11 @@ enum Opcode {
 
 #[derive(Debug)]
 enum IpUpdate {
-    Relative(i32),
+    Relative(i64),
     Absolute(usize),
 }
 
-fn decode_opcode(code: &[i32]) -> Opcode {
+fn decode_opcode(code: &[i64]) -> Opcode {
     let a = &code[0];
     let t = a % 100;
     let params = &code[1..];
@@ -247,33 +247,33 @@ fn decode_opcode(code: &[i32]) -> Opcode {
     }
 }
 
-fn decode_add(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_add(a: &i64, ps: &[i64]) -> Opcode {
     let (p0, p1, p2) = get_arithmetic_params(a, ps);
 
     Opcode::Add(p0, p1, p2)
 }
 
-fn decode_multiply(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_multiply(a: &i64, ps: &[i64]) -> Opcode {
     let (p0, p1, p2) = get_arithmetic_params(a, ps);
 
     Opcode::Multiply(p0, p1, p2)
 }
 
-fn decode_input(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_input(a: &i64, ps: &[i64]) -> Opcode {
     Opcode::Input(get_input_param(a, ps))
 }
 
-fn decode_output(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_output(a: &i64, ps: &[i64]) -> Opcode {
     Opcode::Output(get_output_param(a, ps))
 }
 
-fn decode_jump_if_true(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_jump_if_true(a: &i64, ps: &[i64]) -> Opcode {
     let (p0, p1) = get_jump_params(a, ps);
 
     Opcode::JumpIfTrue(p0, p1)
 }
 
-fn decode_jump_if_false(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_jump_if_false(a: &i64, ps: &[i64]) -> Opcode {
     // if the first parameter is non-zero, it sets the instruction pointer to
     // the value from the second parameter. Otherwise, it does nothing.
     let (p0, p1) = get_jump_params(a, ps);
@@ -281,7 +281,7 @@ fn decode_jump_if_false(a: &i32, ps: &[i32]) -> Opcode {
     Opcode::JumpIfFalse(p0, p1)
 }
 
-fn decode_less_than(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_less_than(a: &i64, ps: &[i64]) -> Opcode {
     // if the first parameter is non-zero, it sets the instruction pointer to
     // the value from the second parameter. Otherwise, it does nothing.
     let (p0, p1, p2) = get_arithmetic_params(a, ps);
@@ -289,7 +289,7 @@ fn decode_less_than(a: &i32, ps: &[i32]) -> Opcode {
     Opcode::LessThan(p0, p1, p2)
 }
 
-fn decode_equal_to(a: &i32, ps: &[i32]) -> Opcode {
+fn decode_equal_to(a: &i64, ps: &[i64]) -> Opcode {
     // if the first parameter is non-zero, it sets the instruction pointer to
     // the value from the second parameter. Otherwise, it does nothing.
     let (p0, p1, p2) = get_arithmetic_params(a, ps);
@@ -297,7 +297,7 @@ fn decode_equal_to(a: &i32, ps: &[i32]) -> Opcode {
     Opcode::EqualTo(p0, p1, p2)
 }
 
-fn get_arithmetic_params(a: &i32, ps: &[i32]) -> (Parameter, Parameter, Parameter) {
+fn get_arithmetic_params(a: &i64, ps: &[i64]) -> (Parameter, Parameter, Parameter) {
     let p0_type = (a / 100) % 10;
     let p1_type = (a / 1000) % 10;
     let p2_type = (a / 10000) % 10;
@@ -309,7 +309,7 @@ fn get_arithmetic_params(a: &i32, ps: &[i32]) -> (Parameter, Parameter, Paramete
     (p0, p1, p2)
 }
 
-fn get_input_param(a: &i32, ps: &[i32]) -> Parameter {
+fn get_input_param(a: &i64, ps: &[i64]) -> Parameter {
     let mode = *a / 100;
     if mode != 0 {
         eprintln!("mode was {}", *a);
@@ -318,12 +318,12 @@ fn get_input_param(a: &i32, ps: &[i32]) -> Parameter {
     decode_param(0, ps[0])
 }
 
-fn get_output_param(a: &i32, ps: &[i32]) -> Parameter {
+fn get_output_param(a: &i64, ps: &[i64]) -> Parameter {
     let mode = *a / 100;
     decode_param(mode, ps[0])
 }
 
-fn get_jump_params(a: &i32, ps: &[i32]) -> (Parameter, Parameter) {
+fn get_jump_params(a: &i64, ps: &[i64]) -> (Parameter, Parameter) {
     let p0_type = (a / 100) % 10;
     let p1_type = (a / 1000) % 10;
 
@@ -333,7 +333,7 @@ fn get_jump_params(a: &i32, ps: &[i32]) -> (Parameter, Parameter) {
     (p0, p1)
 }
 
-fn decode_param(t: i32, v: i32) -> Parameter {
+fn decode_param(t: i64, v: i64) -> Parameter {
     use Parameter::*;
 
     match t {
@@ -345,7 +345,7 @@ fn decode_param(t: i32, v: i32) -> Parameter {
 
 #[derive(Debug, Eq, PartialEq)]
 enum Parameter {
-    Immediate(i32),
+    Immediate(i64),
     Position(usize),
 }
 
