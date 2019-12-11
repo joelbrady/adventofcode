@@ -57,9 +57,9 @@ fn solve2(s: &str) -> i32 {
 fn run_sequence(program: &[i32], sequence: &[i32]) -> i32 {
     let mut signal = 0;
     for seq in sequence {
-        let mut m = Machine::new(program, &vec![*seq, signal]);
-        if let StoppedState::Halted(output) = m.run() {
-            signal = output;
+        let mut m = Machine::new_test_mode(program, &vec![*seq, signal]);
+        if let StoppedState::Halted = m.run() {
+            signal = m.output();
         } else {
             panic!("unexpected stop state");
         }
@@ -88,13 +88,13 @@ fn run_feedback_sequence(program: &[i32], sequence: &[i32]) -> i32 {
                 i += 1;
                 continue
             },
-            StoppedState::Halted(output) => {
+            StoppedState::Halted => {
                 if machine_id != 4 {
-                    input = output;
+                    input = m.output();
                     i += 1;
                     continue
                 } else {
-                    return output
+                    return m.output()
                 }
             },
         }

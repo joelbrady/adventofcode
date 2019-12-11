@@ -2,28 +2,28 @@ pub struct Machine {
     ip: usize,
     memory: [i32; 10000],
     input: Vec<i32>,
-    output: i32,
+    output: Vec<i32>,
     test_mode: bool,
 }
 
 impl Machine {
-    pub fn new(initial_memory: &[i32], input: &[i32]) -> Machine {
+    pub fn new_test_mode(initial_memory: &[i32], input: &[i32]) -> Machine {
         let mut memory = [0; 10000];
         for i in 0..initial_memory.len() {
             memory[i] = initial_memory[i];
         }
-        Machine { ip: 0, memory, input: Vec::from(input), output: 0, test_mode: true }
+        Machine { ip: 0, memory, input: Vec::from(input), output: vec![], test_mode: true }
     }
 
     pub fn new_with_noun_verb(initial_memory: &[i32], noun: i32, verb: i32) -> Machine {
-        let mut m = Machine::new(initial_memory, &vec![0]);
+        let mut m = Machine::new_test_mode(initial_memory, &vec![0]);
         m.memory[1] = noun;
         m.memory[2] = verb;
         m
     }
 
     pub fn new_feedback_mode(initial_memory: &[i32]) -> Machine {
-        let mut m = Machine::new(initial_memory, &vec![]);
+        let mut m = Machine::new_test_mode(initial_memory, &vec![]);
         m.test_mode = false;
         m
     }
@@ -32,8 +32,8 @@ impl Machine {
         self.input.push(input);
     }
 
-    pub fn output(&self) -> i32 {
-        self.output
+    pub fn output(&mut self) -> i32 {
+        self.output.remove(0)
     }
 
     pub fn run(&mut self) -> StoppedState {
@@ -42,7 +42,7 @@ impl Machine {
         loop {
             let op = self.fetch(self.ip);
 //            println!("running {:?}", op);
-            let state= self.execute(&op);
+            let state = self.execute(&op);
             match state {
                 Running(ip_delta) => self.update_ip(&ip_delta),
                 Stopped(stopped_state) => return stopped_state,
@@ -71,14 +71,22 @@ impl Machine {
         use State::*;
         use StoppedState::*;
 
-        if self.test_mode && self.output != 0 {
-            if let Halt = op {
-//                println!("test passed")
-            } else {
-                panic!("test failed")
+        let test_failed: bool = if self.test_mode {
+            let output = self.output.get(0);
+//            println!("output {:?}", output);
+            match output {
+                Some(0) => {
+                    self.output.remove(0);
+                    false
+                }
+                None => false,
+                _ => true,
             }
-        }
-        match op {
+        } else {
+            false
+        };
+
+        let state = match op {
             Add(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
@@ -95,7 +103,7 @@ impl Machine {
             }
             Input(addr) => {
                 if self.input.is_empty() {
-                    return Stopped(BlockedOnInput)
+                    return Stopped(BlockedOnInput);
                 }
                 let a = self.input.remove(0);
                 self.write(addr, a);
@@ -104,7 +112,7 @@ impl Machine {
             Output(addr) => {
                 let value = self.evaluate_param(addr);
 //                println!("output {}", value);
-                self.output = value;
+                self.output.push(value);
                 Running(Relative(2))
             }
             JumpIfTrue(a, b) => {
@@ -127,7 +135,7 @@ impl Machine {
                 };
                 Running(branch)
             }
-            Halt => Stopped(Halted(self.output)),
+            Halt => Stopped(Halted),
             LessThan(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
@@ -150,6 +158,14 @@ impl Machine {
                 self.write(c, result);
                 Running(Relative(4))
             }
+        };
+
+        if *op == Halt {
+            state
+        } else if test_failed {
+            panic!("test failed state: {:?} op: {:?}", state, op)
+        } else {
+            state
         }
     }
 
@@ -182,6 +198,7 @@ pub fn parse_program(s: &str) -> Vec<i32> {
         .collect()
 }
 
+#[derive(Debug)]
 enum State {
     Running(IpUpdate),
     Stopped(StoppedState),
@@ -189,7 +206,7 @@ enum State {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum StoppedState {
-    Halted(i32),
+    Halted,
     BlockedOnInput,
 }
 
@@ -206,6 +223,7 @@ enum Opcode {
     EqualTo(Parameter, Parameter, Parameter),
 }
 
+#[derive(Debug)]
 enum IpUpdate {
     Relative(i32),
     Absolute(usize),
@@ -351,9 +369,10 @@ mod test {
     #[test]
     fn test_io() {
         let program = [3, 0, 4, 0, 99];
-        let mut m = Machine::new(&program, &vec![42]);
+        let mut m = Machine::new_feedback_mode(&program);
+        m.input(42);
         let result = m.run();
         assert_eq!(m.output(), 42);
-        assert_eq!(result, StoppedState::Halted(42))
+        assert_eq!(result, StoppedState::Halted)
     }
 }
