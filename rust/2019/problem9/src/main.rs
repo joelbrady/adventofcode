@@ -2,12 +2,18 @@ use input::get_input;
 use intcode::{parse_program, Machine};
 
 fn main() {
-    let input = get_input("2019/problem9/input");
+    let input = get_input("input");
     let program = parse_program(&input);
     let mut m = Machine::new_test_mode(&program, &vec![1]);
     m.run();
 
     println!("The solution to part 1 is {}", m.output());
+
+    let mut m = Machine::new_feedback_mode(&program);
+    m.input(2);
+    m.run();
+
+    println!("The solution to part 2 is {}", m.output());
 }
 
 #[cfg(test)]
