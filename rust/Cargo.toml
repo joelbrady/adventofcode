@@ -1,0 +1,17 @@
+[workspace]
+
+members = [
+    "parse",
+    "graph",
+    "intcode",
+    "input",
+    "2019/problem1",
+    "2019/problem2",
+    "2019/problem3",
+    "2019/problem4",
+    "2019/problem5",
+    "2019/problem6",
+    "2019/problem7",
+    "2019/problem8",
+    "2019/problem9",
+]
