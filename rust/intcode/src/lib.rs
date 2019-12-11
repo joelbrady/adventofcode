@@ -4,6 +4,7 @@ pub struct Machine {
     input: Vec<i64>,
     output: Vec<i64>,
     test_mode: bool,
+    relative_base: i64
 }
 
 impl Machine {
@@ -12,7 +13,7 @@ impl Machine {
         for i in 0..initial_memory.len() {
             memory[i] = initial_memory[i];
         }
-        Machine { ip: 0, memory, input: Vec::from(input), output: vec![], test_mode: true }
+        Machine { ip: 0, memory, input: Vec::from(input), output: vec![], test_mode: true, relative_base: 0 }
     }
 
     pub fn new_with_noun_verb(initial_memory: &[i64], noun: i64, verb: i64) -> Machine {
@@ -34,6 +35,12 @@ impl Machine {
 
     pub fn output(&mut self) -> i64 {
         self.output.remove(0)
+    }
+
+    pub fn dump_output_buffer(&mut self) -> Vec<i64> {
+        let buf = self.output.clone();
+        self.output = vec![];
+        buf
     }
 
     pub fn run(&mut self) -> StoppedState {
@@ -58,7 +65,8 @@ impl Machine {
         match update {
             IpUpdate::Relative(n) => self.ip += *n as usize,
             IpUpdate::Absolute(n) => self.ip = *n,
-        }
+        };
+//        println!("new ip: {}", self.ip);
     }
 
     fn fetch(&self, addr: usize) -> Opcode {
@@ -73,9 +81,10 @@ impl Machine {
 
         let test_failed: bool = if self.test_mode {
             let output = self.output.get(0);
-//            println!("output {:?}", output);
+//            println!("test result {:?}", output);
             match output {
                 Some(0) => {
+//                    println!("test passed");
                     self.output.remove(0);
                     false
                 }
@@ -103,6 +112,7 @@ impl Machine {
             }
             Input(addr) => {
                 if self.input.is_empty() {
+//                    println!("blocking for input");
                     return Stopped(BlockedOnInput);
                 }
                 let a = self.input.remove(0);
@@ -157,6 +167,12 @@ impl Machine {
                 };
                 self.write(c, result);
                 Running(Relative(4))
+            },
+            AdjustRelativeBase(a) => {
+                let a = self.evaluate_param(a);
+                self.relative_base += a;
+//                println!("adjusting relative by {} to {}", a, self.relative_base);
+                Running(Relative(2))
             }
         };
 
@@ -176,8 +192,16 @@ impl Machine {
             Position(addr) => {
 //                println!("writing {} to *{}", value, *addr);
                 self.memory[*addr] = value
+            },
+            Relative(offset) => {
+                let addr = self.relative_base + *offset;
+                if addr < 0 {
+                    panic!("write to negative address");
+                }
+//                println!("writing {} to *{}", value, addr);
+                self.memory[addr as usize] = value;
             }
-            _ => panic!("Writing to immediate parameter not supported"),
+            Immediate(_) => panic!("Writing to immediate parameter not supported"),
         }
     }
 
@@ -187,6 +211,13 @@ impl Machine {
         match p {
             Immediate(value) => *value,
             Position(addr) => self.memory[*addr],
+            Relative(offset) => {
+                let addr = self.relative_base + *offset;
+                if addr < 0 {
+                    panic!("negative address dereferenced");
+                }
+                self.memory[addr as usize]
+            }
         }
     }
 }
@@ -221,6 +252,7 @@ enum Opcode {
     JumpIfFalse(Parameter, Parameter),
     LessThan(Parameter, Parameter, Parameter),
     EqualTo(Parameter, Parameter, Parameter),
+    AdjustRelativeBase(Parameter),
 }
 
 #[derive(Debug)]
@@ -242,6 +274,7 @@ fn decode_opcode(code: &[i64]) -> Opcode {
         6 => decode_jump_if_false(a, params),
         7 => decode_less_than(a, params),
         8 => decode_equal_to(a, params),
+        9 => decode_adjust_relative_base(a, params),
         99 => Opcode::Halt,
         op => panic!("Unknown opcode: {}", op)
     }
@@ -297,6 +330,12 @@ fn decode_equal_to(a: &i64, ps: &[i64]) -> Opcode {
     Opcode::EqualTo(p0, p1, p2)
 }
 
+fn decode_adjust_relative_base(a: &i64, ps: &[i64]) -> Opcode {
+    let p0 = get_output_param(a, ps);
+
+    Opcode::AdjustRelativeBase(p0)
+}
+
 fn get_arithmetic_params(a: &i64, ps: &[i64]) -> (Parameter, Parameter, Parameter) {
     let p0_type = (a / 100) % 10;
     let p1_type = (a / 1000) % 10;
@@ -311,11 +350,11 @@ fn get_arithmetic_params(a: &i64, ps: &[i64]) -> (Parameter, Parameter, Paramete
 
 fn get_input_param(a: &i64, ps: &[i64]) -> Parameter {
     let mode = *a / 100;
-    if mode != 0 {
+    if mode == 1 {
         eprintln!("mode was {}", *a);
         panic!("input param mode must be position")
     }
-    decode_param(0, ps[0])
+    decode_param(mode, ps[0])
 }
 
 fn get_output_param(a: &i64, ps: &[i64]) -> Parameter {
@@ -339,7 +378,8 @@ fn decode_param(t: i64, v: i64) -> Parameter {
     match t {
         0 => Position(v as usize),
         1 => Immediate(v),
-        _ => unimplemented!(),
+        2 => Relative(v),
+        _ => panic!("unknown parameter type"),
     }
 }
 
@@ -347,6 +387,7 @@ fn decode_param(t: i64, v: i64) -> Parameter {
 enum Parameter {
     Immediate(i64),
     Position(usize),
+    Relative(i64),
 }
 
 #[cfg(test)]
@@ -374,5 +415,14 @@ mod test {
         let result = m.run();
         assert_eq!(m.output(), 42);
         assert_eq!(result, StoppedState::Halted)
+    }
+
+    #[test]
+    fn test_write_relative() {
+        let program = "109,1,22201,-1,0,100,204,100,99";
+        let program = parse_program(program);
+        let mut m = Machine::new_feedback_mode(&program);
+        m.run();
+        assert_eq!(m.output(), 110);
     }
 }
