@@ -1,16 +1,27 @@
 use std::collections::HashSet;
 use num_integer::gcd;
 use input::get_input;
+use std::f64::consts::PI;
 
 fn main() {
     let (_, solution) = solve("input");
     println!("the solution to part 1 is {}", solution);
+    let solution = solve2("input");
+    println!("the solution to part 2 is {}", solution);
 }
 
-fn solve(filename: &str) -> ((i32, i32), i32) {
+fn solve(filename: &str) -> ((i32, i32), usize) {
     let input = get_input(filename);
     let f = Field::parse(&input);
     f.largest_visibility()
+}
+
+fn solve2(filename: &str) -> i32 {
+    let input = get_input(filename);
+    let mut f = Field::parse(&input);
+    let destroyed = f.destroy();
+    let (x, y) = destroyed[199];
+    (x * 100) + y
 }
 
 #[derive(Debug)]
@@ -33,18 +44,19 @@ impl Field {
                     x = 0;
                     y += 1;
                 }
-                _ => panic!("unexpected char"),
+                c => panic!("unexpected char {}", c),
             };
         }
         Field { asteroids }
     }
 
-    fn largest_visibility(&self) -> ((i32, i32), i32) {
+    fn largest_visibility(&self) -> ((i32, i32), usize) {
         let mut asteroid: &(i32, i32) = &(-1, -1);
-        let mut largest = -1;
+        let mut largest = 0;
 
         for a in self.asteroids.iter() {
             let v = self.visible_from(a);
+            let v = v.len();
             if v > largest {
                 largest = v;
                 asteroid = a;
@@ -54,7 +66,7 @@ impl Field {
         (*asteroid, largest)
     }
 
-    fn visible_from(&self, a: &(i32, i32)) -> i32 {
+    fn visible_from(&self, a: &(i32, i32)) -> Vec<(i32, i32)> {
         let mut visible = self.asteroids.clone();
         for b in self.asteroids.iter() {
             if a == b {
@@ -63,16 +75,16 @@ impl Field {
             let d = sub(b, a);
             let d = simplify(&d);
             let multiples = self.multiples_in_bounds(b, &d);
-            if *a == (4, 2) {
-            }
+            if *a == (4, 2) {}
             multiples.iter()
                 .for_each(|m| {
-                    if visible.remove(m) {
-                    }
+                    if visible.remove(m) {}
                 });
         }
         visible.remove(a);
-        visible.len() as i32
+        visible.iter()
+            .map(|v| *v)
+            .collect()
     }
 
     fn multiples_in_bounds(&self, x: &(i32, i32), d: &(i32, i32)) -> Vec<(i32, i32)> {
@@ -105,6 +117,41 @@ impl Field {
             }
         }
     }
+
+    fn destroy(&mut self) -> Vec<(i32, i32)> {
+        use std::cmp::Ordering::{Greater, Less, Equal};
+
+        let mut destroyed: Vec<(i32, i32)> = vec![];
+        let (station, _) = self.largest_visibility();
+        while self.asteroids.len() > 1 {
+            let visible = self.visible_from(&station);
+            let mut visible: Vec<(f64, (i32, i32))> = visible.iter()
+                .map(|v| {
+                    let d = sub(v, &station);
+                    let (x, y) = d;
+                    let d = (x, -y);
+                    (angle(&d), *v)
+                })
+                .collect();
+            visible.sort_by(|a, b| {
+                let (a, _) = a;
+                let (b, _) = b;
+                if a > b {
+                    Greater
+                } else if a < b {
+                    Less
+                } else {
+                    Equal
+                }
+            });
+            visible.iter()
+                .for_each(|(_, v)| {
+                    destroyed.push(*v);
+                    self.asteroids.remove(v);
+                });
+        }
+        destroyed
+    }
 }
 
 fn add(a: &(i32, i32), b: &(i32, i32)) -> (i32, i32) {
@@ -125,6 +172,59 @@ fn simplify(d: &(i32, i32)) -> (i32, i32) {
     (x / g, y / g)
 }
 
+fn angle(v: &(i32, i32)) -> f64 {
+    let (x, y) = *v;
+    if x >= 0 && y > 0 {
+        angle_q1(v)
+    } else if x > 0 && y < 0 {
+        angle_q2(v)
+    } else if x < 0 && y < 0 {
+        angle_q3(v)
+    } else {
+        angle_q4(v)
+    }
+}
+
+fn angle_q1(v: &(i32, i32)) -> f64 {
+//    println!("q1");
+    let (x, y) = v;
+    let x = *x as f64;
+    let y = *y as f64;
+    let h = ((x * x) + (y * y)).sqrt();
+    let theta = (x / h).asin();
+    theta
+}
+
+fn angle_q2(v: &(i32, i32)) -> f64 {
+//    println!("q2");
+    let (x, y) = v;
+    let x = *x as f64;
+    let y = *y as f64;
+    let h = ((x * x) + (y * y)).sqrt();
+    let theta = ((-y) / h).asin() + (PI / 2.0);
+    theta
+}
+
+fn angle_q3(v: &(i32, i32)) -> f64 {
+//    println!("q3");
+    let (x, y) = v;
+    let x = *x as f64;
+    let y = *y as f64;
+    let h = ((x * x) + (y * y)).sqrt();
+    let theta = ((-x) / h).asin() + PI;
+    theta
+}
+
+fn angle_q4(v: &(i32, i32)) -> f64 {
+//    println!("q4");
+    let (x, y) = v;
+    let x = *x as f64;
+    let y = *y as f64;
+    let h = ((x * x) + (y * y)).sqrt();
+    let theta = (y / h).asin() + (3.0 * PI / 2.0);
+    theta
+}
+
 #[cfg(test)]
 mod test {
     use input::get_input;
@@ -135,16 +235,16 @@ mod test {
     fn test_example1() {
         let input = get_input("example1");
         let field = Field::parse(&input);
-        assert_eq!(field.visible_from(&(1, 0)), 7);
-        assert_eq!(field.visible_from(&(4, 0)), 7);
-        assert_eq!(field.visible_from(&(0, 2)), 6);
-        assert_eq!(field.visible_from(&(1, 2)), 7);
-        assert_eq!(field.visible_from(&(2, 2)), 7);
-        assert_eq!(field.visible_from(&(3, 2)), 7);
-        assert_eq!(field.visible_from(&(4, 2)), 5);
-        assert_eq!(field.visible_from(&(4, 3)), 7);
-        assert_eq!(field.visible_from(&(3, 4)), 8);
-        assert_eq!(field.visible_from(&(4, 4)), 7);
+        assert_eq!(field.num_visible_from(&(1, 0)), 7);
+        assert_eq!(field.num_visible_from(&(4, 0)), 7);
+        assert_eq!(field.num_visible_from(&(0, 2)), 6);
+        assert_eq!(field.num_visible_from(&(1, 2)), 7);
+        assert_eq!(field.num_visible_from(&(2, 2)), 7);
+        assert_eq!(field.num_visible_from(&(3, 2)), 7);
+        assert_eq!(field.num_visible_from(&(4, 2)), 5);
+        assert_eq!(field.num_visible_from(&(4, 3)), 7);
+        assert_eq!(field.num_visible_from(&(3, 4)), 8);
+        assert_eq!(field.num_visible_from(&(4, 4)), 7);
     }
 
     #[test]
@@ -157,8 +257,44 @@ mod test {
         assert_eq!(solve("example3"), ((1, 2), 35));
     }
 
+//    // this test is quite slow
 //    #[test]
 //    fn test_example5() {
 //        assert_eq!(solve("example5"), ((11, 13), 210));
 //    }
+
+    #[test]
+    fn test_angle() {
+        let a = angle(&(0, 20));
+        let b = angle(&(20, 1));
+        assert!(a < b);
+        let up = 0.0;
+        let right = PI / 2.0;
+        let down = PI;
+        let left = 3.0 * PI / 2.0;
+
+        assert!(angle(&(1, -1)) > right);
+        assert!(angle(&(1, -1)) < down);
+
+        assert!(angle(&(0, -1)) > right);
+        assert!(angle(&(0, -1)) < left);
+
+        assert!(angle(&(-1, 1)) > left);
+        assert!(angle(&(-1, 1)) < 2.0 * PI);
+
+        assert!(angle(&(-1, -1)) > down);
+        assert!(angle(&(-1, -1)) < left);
+
+        assert_eq!(angle(&(0, 1)), up);
+    }
+
+    #[test]
+    fn test_part2_example1() {
+        let input = get_input("part2_example");
+        let mut f = Field::parse(&input);
+        let asteroid = f.destroy();
+        assert_eq!(asteroid[0], (8, 1));
+        assert_eq!(asteroid[1], (9, 0));
+        assert_eq!(asteroid[2], (9, 1));
+    }
 }
