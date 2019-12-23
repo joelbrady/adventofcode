@@ -4,7 +4,7 @@ pub struct Machine {
     input: Vec<i64>,
     output: Vec<i64>,
     test_mode: bool,
-    relative_base: i64
+    relative_base: i64,
 }
 
 impl Machine {
@@ -13,7 +13,14 @@ impl Machine {
         for i in 0..initial_memory.len() {
             memory[i] = initial_memory[i];
         }
-        Machine { ip: 0, memory, input: Vec::from(input), output: vec![], test_mode: true, relative_base: 0 }
+        Machine {
+            ip: 0,
+            memory,
+            input: Vec::from(input),
+            output: vec![],
+            test_mode: true,
+            relative_base: 0,
+        }
     }
 
     pub fn new_with_noun_verb(initial_memory: &[i64], noun: i64, verb: i64) -> Machine {
@@ -48,7 +55,7 @@ impl Machine {
 
         loop {
             let op = self.fetch(self.ip);
-//            println!("running {:?}", op);
+            //            println!("running {:?}", op);
             let state = self.execute(&op);
             match state {
                 Running(ip_delta) => self.update_ip(&ip_delta),
@@ -66,7 +73,7 @@ impl Machine {
             IpUpdate::Relative(n) => self.ip += *n as usize,
             IpUpdate::Absolute(n) => self.ip = *n,
         };
-//        println!("new ip: {}", self.ip);
+        //        println!("new ip: {}", self.ip);
     }
 
     fn fetch(&self, addr: usize) -> Opcode {
@@ -74,17 +81,17 @@ impl Machine {
     }
 
     fn execute(&mut self, op: &Opcode) -> State {
-        use Opcode::*;
         use IpUpdate::*;
+        use Opcode::*;
         use State::*;
         use StoppedState::*;
 
         let test_failed: bool = if self.test_mode {
             let output = self.output.get(0);
-//            println!("test result {:?}", output);
+            //            println!("test result {:?}", output);
             match output {
                 Some(0) => {
-//                    println!("test passed");
+                    //                    println!("test passed");
                     self.output.remove(0);
                     false
                 }
@@ -99,20 +106,20 @@ impl Machine {
             Add(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
-//                println!("{} + {} = {}", a, b, a + b);
+                //                println!("{} + {} = {}", a, b, a + b);
                 self.write(c, a + b);
                 Running(Relative(4))
             }
             Multiply(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
-//                println!("{} * {} = {}", a, b, a * b);
+                //                println!("{} * {} = {}", a, b, a * b);
                 self.write(c, a * b);
                 Running(Relative(4))
             }
             Input(addr) => {
                 if self.input.is_empty() {
-//                    println!("blocking for input");
+                    //                    println!("blocking for input");
                     return Stopped(BlockedOnInput);
                 }
                 let a = self.input.remove(0);
@@ -121,7 +128,7 @@ impl Machine {
             }
             Output(addr) => {
                 let value = self.evaluate_param(addr);
-//                println!("output {}", value);
+                //                println!("output {}", value);
                 self.output.push(value);
                 Running(Relative(2))
             }
@@ -149,29 +156,21 @@ impl Machine {
             LessThan(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
-                let result = if a < b {
-                    1
-                } else {
-                    0
-                };
+                let result = if a < b { 1 } else { 0 };
                 self.write(c, result);
                 Running(Relative(4))
             }
             EqualTo(a, b, c) => {
                 let a = self.evaluate_param(a);
                 let b = self.evaluate_param(b);
-                let result = if a == b {
-                    1
-                } else {
-                    0
-                };
+                let result = if a == b { 1 } else { 0 };
                 self.write(c, result);
                 Running(Relative(4))
-            },
+            }
             AdjustRelativeBase(a) => {
                 let a = self.evaluate_param(a);
                 self.relative_base += a;
-//                println!("adjusting relative by {} to {}", a, self.relative_base);
+                //                println!("adjusting relative by {} to {}", a, self.relative_base);
                 Running(Relative(2))
             }
         };
@@ -190,15 +189,15 @@ impl Machine {
 
         match addr {
             Position(addr) => {
-//                println!("writing {} to *{}", value, *addr);
+                //                println!("writing {} to *{}", value, *addr);
                 self.memory[*addr] = value
-            },
+            }
             Relative(offset) => {
                 let addr = self.relative_base + *offset;
                 if addr < 0 {
                     panic!("write to negative address");
                 }
-//                println!("writing {} to *{}", value, addr);
+                //                println!("writing {} to *{}", value, addr);
                 self.memory[addr as usize] = value;
             }
             Immediate(_) => panic!("Writing to immediate parameter not supported"),
@@ -219,6 +218,10 @@ impl Machine {
                 self.memory[addr as usize]
             }
         }
+    }
+
+    pub fn set_memory_at_location(&mut self, addr: usize, value: i64) {
+        self.memory[addr] = value;
     }
 }
 
@@ -276,7 +279,7 @@ fn decode_opcode(code: &[i64]) -> Opcode {
         8 => decode_equal_to(a, params),
         9 => decode_adjust_relative_base(a, params),
         99 => Opcode::Halt,
-        op => panic!("Unknown opcode: {}", op)
+        op => panic!("Unknown opcode: {}", op),
     }
 }
 
@@ -399,9 +402,18 @@ mod test {
         use Opcode::*;
         use Parameter::*;
 
-        assert_eq!(decode_opcode(&[1, 0, 0, 0]), Add(Position(0), Position(0), Position(0)));
-        assert_eq!(decode_opcode(&[1101, 0, 0, 0]), Add(Immediate(0), Immediate(0), Position(0)));
-        assert_eq!(decode_opcode(&[102, 0, 13, 0]), Multiply(Immediate(0), Position(13), Position(0)));
+        assert_eq!(
+            decode_opcode(&[1, 0, 0, 0]),
+            Add(Position(0), Position(0), Position(0))
+        );
+        assert_eq!(
+            decode_opcode(&[1101, 0, 0, 0]),
+            Add(Immediate(0), Immediate(0), Position(0))
+        );
+        assert_eq!(
+            decode_opcode(&[102, 0, 13, 0]),
+            Multiply(Immediate(0), Position(13), Position(0))
+        );
         assert_eq!(decode_opcode(&[03, 1231]), Input(Position(1231)));
         assert_eq!(decode_opcode(&[04, 1111]), Output(Position(1111)));
         assert_eq!(decode_opcode(&[104, 1111]), Output(Immediate(1111)));
