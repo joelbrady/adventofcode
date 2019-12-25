@@ -1,6 +1,5 @@
 use input::get_input;
 use intcode::{parse_program, Machine, StoppedState};
-use std::io::{stdin, Read};
 
 fn main() {
     let program = parse_program(&get_input("2019/day13/input"));
@@ -29,58 +28,80 @@ fn part2(program: &[i64]) -> i64 {
     // insert 2 quarters
     m.set_memory_at_location(0, 2);
     let mut segment_display = [Tile::Empty; (ROWS * COLS) as usize];
+    let mut score: i64 = 0;
     while let StoppedState::BlockedOnInput = m.run() {
         let output = m.dump_output_buffer();
-        display(&output, &mut segment_display);
-        let mut buf= [0u8, 1];
-        stdin().lock().read_exact(&mut buf).unwrap();
-        let input = buf[0] as char;
-        let input = match input {
-            'a' => -1,
-            'd' => 1,
-            _ => 0,
+        let GameState { paddle, ball, score: maybe_score } = display(&output, &mut segment_display);
+//        println!("Score: {}", score);
+//        sleep(Duration::new(1, 0));
+        let input = if paddle.0 < ball.0 {
+            1
+        } else if paddle.0 == ball.0 {
+            0
+        } else {
+            -1
+        };
+        if let Some(n) = maybe_score {
+            score = n
         };
         m.input(input);
     }
     let output = m.dump_output_buffer();
-    display(&output, &mut segment_display)
+    let gs = display(&output, &mut segment_display);
+    match gs.score {
+        Some(score) => score,
+        _ => score,
+    }
 }
 
-fn display(output: &[i64], segment_display: &mut [Tile]) -> i64 {
+fn display(output: &[i64], segment_display: &mut [Tile]) -> GameState {
     let (commands, score) = parse_commands(output);
     for DisplayCommand { x, y, tile } in &commands {
         let i = idx(*x, *y);
         segment_display[i] = *tile;
     }
 
+    let mut ball: (i64, i64) = (0, 0);
+    let mut paddle: (i64, i64) = (0, 0);
+
     for y in 0..ROWS {
         for x in 0..COLS {
             let i = idx(x as i64, y as i64);
-            print!("{}", segment_display[i].as_str());
+            let tile = segment_display[i];
+//            print!("{}", tile.as_str());
+            match tile {
+                Tile::Paddle => paddle = (x as i64, y as i64),
+                Tile::Ball => ball = (x as i64, y as i64),
+                _ => continue,
+            }
         }
-        println!();
+//        println!();
     }
 
-    println!("\nScore: {}", score);
-    println!("# commands: {}", commands.len());
+//    println!("# commands: {}", commands.len());
+    GameState { score, paddle, ball }
+}
 
-    score
+struct GameState {
+    score: Option<i64>,
+    paddle: (i64, i64),
+    ball: (i64, i64),
 }
 
 fn idx(x: i64, y: i64) -> usize {
     ((y * COLS as i64) + x) as usize
 }
 
-fn parse_commands(output: &[i64]) -> (Vec<DisplayCommand>, i64) {
+fn parse_commands(output: &[i64]) -> (Vec<DisplayCommand>, Option<i64>) {
     let mut commands = vec![];
-    let mut score: i64 = -1;
+    let mut score: Option<i64> = None;
     for i in 0..(output.len() / 3) {
         let idx = i * 3;
         let x = output[idx];
         let y = output[idx + 1];
         let tile = output[idx + 2];
         if x == -1 && y == 0 {
-            score = tile;
+            score = Some(tile);
         } else {
             commands.push(DisplayCommand {
                 x,
