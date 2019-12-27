@@ -243,10 +243,10 @@ mod test {
         //<x=2, y=-10, z=-7>
         //<x=4, y=-8, z=8>
         //<x=3, y=5, z=-1>
-        let a = Moon::from_tuple((-1, 0, 2).into());
-        let b = Moon::from_tuple((2, -10, -7).into());
-        let c = Moon::from_tuple((4, -8, 8).into());
-        let d = Moon::from_tuple((3, 5, -1).into());
+        let a = Moon::from_tuple((-1, 0, 2));
+        let b = Moon::from_tuple((2, -10, -7));
+        let c = Moon::from_tuple((4, -8, 8));
+        let d = Moon::from_tuple((3, 5, -1));
 
         let (a, b, c, d) = step(&a, &b, &c, &d);
 
@@ -320,10 +320,10 @@ mod test {
 
     #[test]
     fn test_part2_example1() {
-        let a = Moon::from_tuple((-1, 0, 2).into());
-        let b = Moon::from_tuple((2, -10, -7).into());
-        let c = Moon::from_tuple((4, -8, 8).into());
-        let d = Moon::from_tuple((3, 5, -1).into());
+        let a = Moon::from_tuple((-1, 0, 2));
+        let b = Moon::from_tuple((2, -10, -7));
+        let c = Moon::from_tuple((4, -8, 8));
+        let d = Moon::from_tuple((3, 5, -1));
 
         let solution = solve2(&a, &b, &c, &d);
         assert_eq!(solution, 2772);

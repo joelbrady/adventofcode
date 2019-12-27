@@ -8,7 +8,7 @@ pub fn parse_i32(input: &str) -> IResult<&str, i32> {
     let (input, digits) = digit1(input)?;
     let n: i32 = digits.parse().unwrap();
     let n: i32 = match sign {
-        Some(_) => -1 * n,
+        Some(_) => -n,
         None => n
     };
     Ok((input, n))
