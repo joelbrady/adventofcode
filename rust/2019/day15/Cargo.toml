@@ -1,0 +1,11 @@
+[package]
+name = "day15"
+version = "0.1.0"
+authors = ["Joel Brady <jbrady@atlassian.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+input = { path = "../../input" }
+intcode = { path = "../../intcode" }

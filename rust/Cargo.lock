@@ -48,6 +48,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "day15"
+version = "0.1.0"
+dependencies = [
+ "input 0.1.0",
+ "intcode 0.1.0",
+]
+
+[[package]]
 name = "graph"
 version = "0.1.0"
 
