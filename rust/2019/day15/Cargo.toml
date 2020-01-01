@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 input = { path = "../../input" }
 intcode = { path = "../../intcode" }
+termion = "1.5.4"

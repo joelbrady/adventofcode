@@ -3,6 +3,11 @@ use std::rc::Rc;
 
 use input::get_input;
 use intcode::{Machine, parse_program, StoppedState};
+use termion::input::TermRead;
+use termion::event::Key;
+use termion::raw::IntoRawMode;
+use std::process::exit;
+use std::cmp::{min, max};
 
 fn main() {
     println!("The solution to part 1 is {}", solve_part1());
@@ -41,15 +46,27 @@ impl Coordinates {
 }
 
 #[derive(Debug)]
-struct Map(HashMap<Coordinates, Tile>);
+struct Map {
+    map: HashMap<Coordinates, Tile>,
+    min_x: i64,
+    min_y: i64,
+    max_x: i64,
+    max_y: i64,
+}
 
 impl Map {
     fn new() -> Map {
-        Map(HashMap::new())
+        Map {
+            map: HashMap::new(),
+            min_x: -1,
+            min_y: -1,
+            max_x: 1,
+            max_y: 1,
+        }
     }
 
     fn get(&self, coords: &Coordinates) -> Tile {
-        *(self.0.get(coords).unwrap_or(&Tile::Unexplored))
+        *(self.map.get(coords).unwrap_or(&Tile::Unexplored))
     }
 
     fn surrounding(&self, coords: &Coordinates) -> Vec<(Coordinates, Tile)> {
@@ -64,13 +81,17 @@ impl Map {
     }
 
     fn insert(&mut self, coords: Coordinates, tile: Tile) {
-        self.0.insert(coords, tile);
+        self.map.insert(coords, tile);
+        let Coordinates(x, y) = coords;
+        self.min_x = min(x, self.min_x);
+        self.min_y = min(y, self.min_y);
+        self.max_x = max(x, self.max_x);
+        self.max_y = max(y, self.max_y);
     }
 
     fn display(&self, droid_location: &Coordinates) {
-        let range = 40;
-        for y in -range..=range {
-            for x in -range..=range {
+        for y in (self.min_y - 1)..=(self.max_y + 1) {
+            for x in (self.min_x - 1)..=(self.max_x + 1) {
                 let coords = Coordinates(x, y);
                 if coords == *droid_location {
                     print!("D");
@@ -90,30 +111,68 @@ fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
     let mut map = Map::new();
     map.insert(current_location, Tile::Ground);
 
-    while let Some(path) = find_closest_tile(&map, current_location, Tile::Unexplored) {
-        let steps: Vec<(MovementResult, Coordinates)> = vec![];
-        for step in path {
-            map.display(&current_location);
+    loop {
+        map.display(&current_location);
 
-            match droid.go(step) {
-                MovementResult::HitWall => {
-                    let target_location = current_location.go(step);
-                    map.insert(target_location, Tile::Wall);
-                    break
-                },
-                MovementResult::Success => {
-                    current_location = current_location.go(step);
-                    map.insert(current_location, Tile::Ground);
-                },
-                MovementResult::FoundOxygen => {
-                    current_location = current_location.go(step);
-                    map.insert(current_location, Tile::OxygenSystem)
-                },
+        let step = get_keyboard_movement().unwrap_or_else(|| {
+            exit(0);
+        });
+
+        match droid.go(step) {
+            MovementResult::HitWall => {
+                let target_location = current_location.go(step);
+                map.insert(target_location, Tile::Wall);
+            }
+            MovementResult::Success => {
+                current_location = current_location.go(step);
+                map.insert(current_location, Tile::Ground);
+            }
+            MovementResult::FoundOxygen => {
+                current_location = current_location.go(step);
+                map.insert(current_location, Tile::OxygenSystem)
             }
         }
     }
 
     unimplemented!()
+}
+
+fn get_keyboard_movement() -> Option<Movement> {
+    use Movement::*;
+
+    let mut result = None::<Movement>;
+
+    let stdout = std::io::stdout().into_raw_mode().unwrap();
+
+    for c in std::io::stdin().keys() {
+        match c.unwrap() {
+            Key::Char('w') => {
+                result = Some(North);
+                break
+            },
+            Key::Char('s') => {
+                result = Some(South);
+                break
+            },
+            Key::Char('d') => {
+                result = Some(East);
+                break
+            },
+            Key::Char('a') => {
+                result = Some(West);
+                break
+            },
+            Key::Char('q') => {
+                result = None;
+                break
+            },
+            _ => {}
+        }
+    }
+
+    stdout.suspend_raw_mode().unwrap();
+
+    result
 }
 
 fn find_closest_tile(map: &Map, current_location: Coordinates, tile: Tile) -> Option<Vec<Movement>> {
@@ -124,7 +183,7 @@ fn find_closest_tile(map: &Map, current_location: Coordinates, tile: Tile) -> Op
     while !queue.is_empty() {
         let current = queue.pop_front().unwrap();
         if seen.contains(&current.coords) {
-            continue
+            continue;
         }
         let tile = map.get(&current.coords);
         if tile == Tile::Unexplored {
