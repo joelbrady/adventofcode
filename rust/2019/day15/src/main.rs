@@ -67,8 +67,20 @@ impl Map {
         self.0.insert(coords, tile);
     }
 
-    fn display(&self) {
-        // TODO
+    fn display(&self, droid_location: &Coordinates) {
+        let range = 40;
+        for y in -range..=range {
+            for x in -range..=range {
+                let coords = Coordinates(x, y);
+                if coords == *droid_location {
+                    print!("D");
+                } else {
+                    let tile = self.get(&coords);
+                    print!("{}", tile.as_str());
+                }
+            }
+            println!();
+        }
     }
 }
 
@@ -81,6 +93,8 @@ fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
     while let Some(path) = find_closest_tile(&map, current_location, Tile::Unexplored) {
         let steps: Vec<(MovementResult, Coordinates)> = vec![];
         for step in path {
+            map.display(&current_location);
+
             match droid.go(step) {
                 MovementResult::HitWall => {
                     let target_location = current_location.go(step);
@@ -98,8 +112,6 @@ fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
             }
         }
     }
-
-    map.display();
 
     unimplemented!()
 }
