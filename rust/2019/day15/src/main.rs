@@ -114,6 +114,40 @@ fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
     loop {
         map.display(&current_location);
 
+        while let Some(path) = find_closest_tile(&map, &current_location, Tile::Unexplored) {
+            for step in path {
+                match droid.go(step) {
+                    MovementResult::HitWall => {
+                        let target_location = current_location.go(step);
+                        map.insert(target_location, Tile::Wall);
+                    }
+                    MovementResult::Success => {
+                        current_location = current_location.go(step);
+                        map.insert(current_location, Tile::Ground);
+                    }
+                    MovementResult::FoundOxygen => {
+                        current_location = current_location.go(step);
+                        map.insert(current_location, Tile::OxygenSystem)
+                    }
+                }
+            }
+        }
+
+
+    }
+
+    unimplemented!()
+}
+
+fn manual_explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
+    where D: RepairDroid {
+    let mut current_location: Coordinates = Coordinates(0, 0);
+    let mut map = Map::new();
+    map.insert(current_location, Tile::Ground);
+
+    loop {
+        map.display(&current_location);
+
         let step = get_keyboard_movement().unwrap_or_else(|| {
             exit(0);
         });
@@ -175,10 +209,10 @@ fn get_keyboard_movement() -> Option<Movement> {
     result
 }
 
-fn find_closest_tile(map: &Map, current_location: Coordinates, tile: Tile) -> Option<Vec<Movement>> {
+fn find_closest_tile(map: &Map, current_location: &Coordinates, tile: Tile) -> Option<Vec<Movement>> {
     let mut seen: HashSet<Coordinates> = HashSet::new();
     let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
-    queue.push_back(Rc::new(Node { parent: None, coords: current_location, movement: None }));
+    queue.push_back(Rc::new(Node { parent: None, coords: current_location.clone(), movement: None }));
 
     while !queue.is_empty() {
         let current = queue.pop_front().unwrap();
