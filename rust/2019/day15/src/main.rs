@@ -1,13 +1,9 @@
+use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
 
 use input::get_input;
 use intcode::{Machine, parse_program, StoppedState};
-use termion::input::TermRead;
-use termion::event::Key;
-use termion::raw::IntoRawMode;
-use std::process::exit;
-use std::cmp::{min, max};
 
 fn main() {
     println!("The solution to part 1 is {}", solve_part1());
@@ -111,130 +107,65 @@ fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
     let mut map = Map::new();
     map.insert(current_location, Tile::Ground);
 
-    loop {
-        map.display(&current_location);
-
-        while let Some(path) = find_closest_tile(&map, &current_location, Tile::Unexplored) {
-            for step in path {
-                match droid.go(step) {
-                    MovementResult::HitWall => {
-                        let target_location = current_location.go(step);
-                        map.insert(target_location, Tile::Wall);
-                    }
-                    MovementResult::Success => {
-                        current_location = current_location.go(step);
-                        map.insert(current_location, Tile::Ground);
-                    }
-                    MovementResult::FoundOxygen => {
-                        current_location = current_location.go(step);
-                        map.insert(current_location, Tile::OxygenSystem)
-                    }
+    while let Some(path) = find_closest_tile(&map, &current_location) {
+        for step in path {
+            match droid.go(step) {
+                MovementResult::HitWall => {
+                    let target_location = current_location.go(step);
+                    map.insert(target_location, Tile::Wall);
+                }
+                MovementResult::Success => {
+                    current_location = current_location.go(step);
+                    map.insert(current_location, Tile::Ground);
+                }
+                MovementResult::FoundOxygen => {
+                    current_location = current_location.go(step);
+                    map.insert(current_location, Tile::OxygenSystem)
                 }
             }
         }
 
-
     }
 
-    unimplemented!()
+    let a = map.get(&Coordinates(-13, 2));
+    dbg!(a);
+
+    dbg!(&current_location);
+    map.display(&current_location);
+
+    unimplemented!("ran out of paths")
 }
 
-fn manual_explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
-    where D: RepairDroid {
-    let mut current_location: Coordinates = Coordinates(0, 0);
-    let mut map = Map::new();
-    map.insert(current_location, Tile::Ground);
-
-    loop {
-        map.display(&current_location);
-
-        let step = get_keyboard_movement().unwrap_or_else(|| {
-            exit(0);
-        });
-
-        match droid.go(step) {
-            MovementResult::HitWall => {
-                let target_location = current_location.go(step);
-                map.insert(target_location, Tile::Wall);
-            }
-            MovementResult::Success => {
-                current_location = current_location.go(step);
-                map.insert(current_location, Tile::Ground);
-            }
-            MovementResult::FoundOxygen => {
-                current_location = current_location.go(step);
-                map.insert(current_location, Tile::OxygenSystem)
-            }
-        }
-    }
-
-    unimplemented!()
-}
-
-fn get_keyboard_movement() -> Option<Movement> {
-    use Movement::*;
-
-    let mut result = None::<Movement>;
-
-    let stdout = std::io::stdout().into_raw_mode().unwrap();
-
-    for c in std::io::stdin().keys() {
-        match c.unwrap() {
-            Key::Char('w') => {
-                result = Some(North);
-                break
-            },
-            Key::Char('s') => {
-                result = Some(South);
-                break
-            },
-            Key::Char('d') => {
-                result = Some(East);
-                break
-            },
-            Key::Char('a') => {
-                result = Some(West);
-                break
-            },
-            Key::Char('q') => {
-                result = None;
-                break
-            },
-            _ => {}
-        }
-    }
-
-    stdout.suspend_raw_mode().unwrap();
-
-    result
-}
-
-fn find_closest_tile(map: &Map, current_location: &Coordinates, tile: Tile) -> Option<Vec<Movement>> {
+fn find_closest_tile(map: &Map, current_location: &Coordinates) -> Option<Vec<Movement>> {
     let mut seen: HashSet<Coordinates> = HashSet::new();
     let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
-    queue.push_back(Rc::new(Node { parent: None, coords: current_location.clone(), movement: None }));
+    queue.push_back(Rc::new(Node { parent: None, coords: *current_location, movement: None }));
+    // println!("\nexploring from {:?}", current_location);
 
-    while !queue.is_empty() {
-        let current = queue.pop_front().unwrap();
-        if seen.contains(&current.coords) {
+    while let Some(current) = queue.pop_front() {
+        if !seen.insert(current.coords) {
+            // println!("already visited {:?}", current.coords);
             continue;
         }
         let tile = map.get(&current.coords);
+        // println!("visiting {:?}, there is a {:?} here", current.coords, tile);
         if tile == Tile::Unexplored {
-            return Some(current.build_path());
+            let path = current.build_path();
+            return Some(path);
         }
-        seen.insert(current.coords);
+        if tile == Tile::Wall {
+            continue;
+        }
         Movement::values()
             .iter()
-            .map(|m| (*m, current_location.go(*m)))
-            .filter(|(_, coords)| !current.path_contains(coords))
-            .filter(|(_, coords)| !seen.contains(coords))
+            .map(|m| (*m, current.coords.go(*m)))
             .for_each(|(movement, coords)| {
                 let node = Rc::new(Node {
                     coords,
                     parent: Some(current.clone()),
                     movement: Some(movement),
                 });
+                // println!("planning to visit {:?}", node.coords);
                 queue.push_back(node);
             });
     }
@@ -267,8 +198,8 @@ impl Node {
                 let mut v = vec![m];
                 let parent = self.parent.as_ref().unwrap();
                 let mut v2 = parent.build_path();
-                v.append(&mut v2);
-                v
+                v2.append(&mut v);
+                v2
             }
             None => vec![],
         }
