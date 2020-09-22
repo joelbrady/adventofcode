@@ -7,6 +7,7 @@ use intcode::{Machine, parse_program, StoppedState};
 
 fn main() {
     println!("The solution to part 1 is {}", solve_part1());
+    println!("The solution to part 2 is {}", solve_part2());
 }
 
 fn solve_part1() -> u64 {
@@ -16,6 +17,16 @@ fn solve_part1() -> u64 {
     let map = explore_entire_map(&mut droid);
     let path_to_oxygen = get_path_to_oxygen(&map);
     path_to_oxygen.len() as u64
+}
+
+fn solve_part2() -> u64 {
+    let input = get_input("2019/day15/input");
+    let program = parse_program(&input);
+    let mut droid = IntCodePoweredRepairDroid::new(&program);
+    let map = explore_entire_map(&mut droid);
+    let path_to_oxygen = get_path_to_oxygen(&map);
+    let oxygen_location = path_to_oxygen.iter().fold(Coordinates(0, 0), |c, m| c.go(*m));
+    find_longest_path_length(&map, &oxygen_location) - 1
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
@@ -66,19 +77,10 @@ impl Map {
         *(self.map.get(coords).unwrap_or(&Tile::Unexplored))
     }
 
-    fn surrounding(&self, coords: &Coordinates) -> Vec<(Coordinates, Tile)> {
-        Movement::values()
-            .iter()
-            .map(|m| coords.go(*m))
-            .map(|c| {
-                let tile = self.get(&c);
-                (c, tile)
-            })
-            .collect()
-    }
-
     fn insert(&mut self, coords: Coordinates, tile: Tile) {
         self.map.insert(coords, tile);
+
+        // update bounds for nice drawing later
         let Coordinates(x, y) = coords;
         self.min_x = min(x, self.min_x);
         self.min_y = min(y, self.min_y);
@@ -125,7 +127,6 @@ fn explore_entire_map<D>(droid: &mut D) -> Map
                 }
             }
         }
-
     }
 
     map
@@ -139,15 +140,12 @@ fn find_closest_tile(map: &Map, current_location: &Coordinates, tile_type: Tile)
     let mut seen: HashSet<Coordinates> = HashSet::new();
     let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
     queue.push_back(Rc::new(Node { parent: None, coords: *current_location, movement: None }));
-    // println!("\nexploring from {:?}", current_location);
 
     while let Some(current) = queue.pop_front() {
         if !seen.insert(current.coords) {
-            // println!("already visited {:?}", current.coords);
             continue;
         }
         let tile = map.get(&current.coords);
-        // println!("visiting {:?}, there is a {:?} here", current.coords, tile);
         if tile == tile_type {
             let path = current.build_path();
             return Some(path);
@@ -164,12 +162,43 @@ fn find_closest_tile(map: &Map, current_location: &Coordinates, tile_type: Tile)
                     parent: Some(current.clone()),
                     movement: Some(movement),
                 });
-                // println!("planning to visit {:?}", node.coords);
                 queue.push_back(node);
             });
     }
 
     None
+}
+
+fn find_longest_path_length(map: &Map, start: &Coordinates) -> u64 {
+    let mut seen: HashSet<Coordinates> = HashSet::new();
+    let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
+    let mut most_recent = Rc::new(Node { parent: None, coords: *start, movement: None });
+    queue.push_back(Rc::clone(&most_recent));
+
+    while let Some(current) = queue.pop_front() {
+        if !seen.insert(current.coords) {
+            continue;
+        } else {
+            most_recent = Rc::clone(&current);
+        }
+        let tile = map.get(&current.coords);
+        if tile == Tile::Wall {
+            continue;
+        }
+        Movement::values()
+            .iter()
+            .map(|m| (*m, current.coords.go(*m)))
+            .for_each(|(movement, coords)| {
+                let node = Rc::new(Node {
+                    coords,
+                    parent: Some(Rc::clone(&current)),
+                    movement: Some(movement),
+                });
+                queue.push_back(node);
+            });
+    }
+
+    most_recent.build_path().len() as u64
 }
 
 #[derive(Debug)]
@@ -180,28 +209,16 @@ struct Node {
 }
 
 impl Node {
-    fn path_contains(&self, coords: &Coordinates) -> bool {
-        if self.coords == *coords {
-            true
-        } else {
-            match &self.parent {
-                Some(node) => node.path_contains(coords),
-                None => false,
-            }
-        }
-    }
-
     fn build_path(&self) -> Vec<Movement> {
-        match self.movement {
-            Some(m) => {
-                let mut v = vec![m];
-                let parent = self.parent.as_ref().unwrap();
-                let mut v2 = parent.build_path();
-                v2.append(&mut v);
-                v2
-            }
-            None => vec![],
-        }
+        self.movement.and_then(|m|
+            self.parent.as_ref()
+                .map(|p| {
+                    let mut a = p.build_path();
+                    a.push(m);
+                    a
+                })
+        )
+            .unwrap_or_else(Vec::new)
     }
 }
 
