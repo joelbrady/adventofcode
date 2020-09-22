@@ -14,7 +14,8 @@ fn solve_part1() -> u64 {
     let program = parse_program(&input);
     let mut droid = IntCodePoweredRepairDroid::new(&program);
     let map = explore_entire_map(&mut droid);
-    unimplemented!()
+    let path_to_oxygen = get_path_to_oxygen(&map);
+    path_to_oxygen.len() as u64
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
@@ -101,13 +102,13 @@ impl Map {
     }
 }
 
-fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
+fn explore_entire_map<D>(droid: &mut D) -> Map
     where D: RepairDroid {
     let mut current_location: Coordinates = Coordinates(0, 0);
     let mut map = Map::new();
     map.insert(current_location, Tile::Ground);
 
-    while let Some(path) = find_closest_tile(&map, &current_location) {
+    while let Some(path) = find_closest_tile(&map, &current_location, Tile::Unexplored) {
         for step in path {
             match droid.go(step) {
                 MovementResult::HitWall => {
@@ -127,16 +128,14 @@ fn explore_entire_map<D>(droid: &mut D) -> (Map, Coordinates)
 
     }
 
-    let a = map.get(&Coordinates(-13, 2));
-    dbg!(a);
-
-    dbg!(&current_location);
-    map.display(&current_location);
-
-    unimplemented!("ran out of paths")
+    map
 }
 
-fn find_closest_tile(map: &Map, current_location: &Coordinates) -> Option<Vec<Movement>> {
+fn get_path_to_oxygen(map: &Map) -> Vec<Movement> {
+    find_closest_tile(map, &Coordinates(0, 0), Tile::OxygenSystem).unwrap()
+}
+
+fn find_closest_tile(map: &Map, current_location: &Coordinates, tile_type: Tile) -> Option<Vec<Movement>> {
     let mut seen: HashSet<Coordinates> = HashSet::new();
     let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
     queue.push_back(Rc::new(Node { parent: None, coords: *current_location, movement: None }));
@@ -149,7 +148,7 @@ fn find_closest_tile(map: &Map, current_location: &Coordinates) -> Option<Vec<Mo
         }
         let tile = map.get(&current.coords);
         // println!("visiting {:?}, there is a {:?} here", current.coords, tile);
-        if tile == Tile::Unexplored {
+        if tile == tile_type {
             let path = current.build_path();
             return Some(path);
         }
