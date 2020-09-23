@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-use input::get_input;
-
 fn main() {
-    let input = get_input("2019/day16/input");
+    let input = include_str!("input");
     println!("The solution to part 1 is {}", solve_part1(&input));
+    println!("The solution to part 2 is {}", solve_part2(&input));
 }
 
 fn solve_part1(input: &str) -> String {
@@ -18,6 +16,15 @@ fn solve_part1(input: &str) -> String {
     result.join("")
 }
 
+fn solve_part2(input: &str) -> String {
+    let input = parse_input(input);
+    let input = input.repeat(10000);
+    // TODO parse offset from file
+    let result = fft_part2(&input, 100, 5971723);
+    let a: Vec<String> = result.iter().skip(5971723).take(8).map(|n| n.to_string()).collect();
+    a.join("")
+}
+
 fn parse_input(s: &str) -> Vec<i32> {
     s.trim().chars()
         .map(|c| c.to_digit(10).unwrap() as i32)
@@ -25,85 +32,72 @@ fn parse_input(s: &str) -> Vec<i32> {
 }
 
 fn fft(input: &[i32], iterations: usize) -> Vec<i32> {
-    let patterns = build_patterns(input.len() + 1);
     let mut a: Vec<i32> = input.iter().copied().collect();
+    let mut b: Vec<i32> = a.to_vec();
 
     for _ in 0..iterations {
-        let b = round(&a, &patterns);
-        a = b;
+        fast_round(&a, &mut b);
+        std::mem::swap(&mut a, &mut b);
     }
 
     a
 }
 
-fn round(input: &[i32], patterns: &HashMap<usize, Vec<i32>>) -> Vec<i32> {
-    (1..=input.len())
-        .map(|idx| {
-            let pattern = patterns.get(&idx).unwrap();
-            dot(input, pattern).abs() % 10
-        })
-        .collect()
+fn fft_part2(input: &[i32], iterations: usize, offset: usize) -> Vec<i32> {
+    let mut a: Vec<i32> = input.iter().copied().collect();
+
+    for _ in 0..iterations {
+        fast_round2(&mut a, offset);
+    }
+
+    a
 }
 
-fn dot(a: &[i32], b: &[i32]) -> i32 {
+fn fast_round2(a: &mut [i32], offset: usize) {
+    for i in (offset..a.len() - 1).rev() {
+        a[i] += a[i + 1];
+    }
+
+    for i in (offset..a.len()).rev() {
+        a[i] %= 10;
+    }
+}
+
+fn fast_round(input: &[i32], output: &mut [i32]) {
+    for idx in 1..=input.len() {
+        output[idx - 1] = dot(input, idx).abs() % 10
+    }
+}
+
+fn x(position: usize, element: usize) -> i32 {
+    let repeats_at = 4 * position;
+    let element = element + repeats_at;
+    let element = element + 1;
+    let section = element / position;
+    let section = section % 4;
+    z(section)
+}
+
+fn z(i: usize) -> i32 {
+    match i {
+        0 => 0,
+        1 => 1,
+        2 => 0,
+        3 => -1,
+        _ => panic!()
+    }
+}
+
+fn dot(a: &[i32], idx: usize) -> i32 {
     a.iter()
-        .zip(b.iter())
-        .map(|(a, b)|  (a * b))
+        .enumerate()
+        .map(|(i, n)|  n * x(idx, i))
         .sum()
-}
-
-fn base() -> Vec<i32> {
-    vec![0, 1, 0, -1]
-        .repeat(10000)
-}
-
-fn build_patterns(max_index: usize) -> HashMap<usize, Vec<i32>> {
-    (1..max_index)
-        .map(|idx| (idx, pattern(idx, max_index)))
-        .collect()
-}
-
-fn pattern(n: usize, max_length: usize) -> Vec<i32> {
-    let b = base();
-    duplicate(&b, n, max_length)
-        .iter()
-        .skip(1)
-        .take(max_length)
-        .copied()
-        .collect()
-}
-
-fn duplicate(v: &[i32], n: usize, max_length: usize) -> Vec<i32> {
-    v.iter()
-        .flat_map(|i| vec![i].repeat(n))
-        .take(max_length + 1)
-        .copied()
-        .collect()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn duplicate_test() {
-        let v = vec![1, 2, 3];
-        let expected = vec![1, 1, 1, 2, 2, 2, 3, 3, 3];
-        let actual = duplicate(&v, 3, expected.len());
-
-        assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn pattern_test() {
-        let expected = vec![0, 1, 1, 0, 0, -1, -1, 0, 0, 1, 1, 0, 0, -1, -1];
-        let actual: Vec<i32> = pattern(2, expected.len()).iter()
-            .take(expected.len())
-            .copied()
-            .collect();
-
-        assert_eq!(actual, expected)
-    }
 
     #[test]
     fn fft_example() {
@@ -145,5 +139,38 @@ mod test {
             .collect();
 
         assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_x() {
+        assert_eq!(x(1, 0), 1);
+        assert_eq!(x(1, 1), 0);
+        assert_eq!(x(1, 2), -1);
+        assert_eq!(x(1, 3), 0);
+
+        assert_eq!(x(2, 0), 0);
+        assert_eq!(x(2, 1), 1);
+        assert_eq!(x(2, 2), 1);
+        assert_eq!(x(2, 3), 0);
+        assert_eq!(x(2, 4), 0);
+        assert_eq!(x(2, 5), -1);
+        assert_eq!(x(2, 6), -1);
+        assert_eq!(x(2, 7), 0);
+    }
+
+    #[test]
+    fn part_one() {
+        let input = include_str!("input");
+        let solution = solve_part1(input);
+
+        assert_eq!(solution, "58672132")
+    }
+
+    #[test]
+    fn part_two() {
+        let input = include_str!("input");
+        let solution = solve_part2(input);
+
+        assert_eq!(solution, "91689380")
     }
 }
