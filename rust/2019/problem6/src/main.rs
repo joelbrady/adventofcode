@@ -1,6 +1,7 @@
-use input::get_input;
-use graph::Graph;
 use std::collections::HashSet;
+
+use graph::Graph;
+use input::get_input;
 
 fn main() {
     let input = get_input("input");
@@ -13,13 +14,13 @@ fn main() {
 }
 
 fn parse(input: &str) -> Vec<Orbit> {
-    input.split("\n")
+    input.lines()
         .map(|s| parse_orbit(s))
         .collect()
 }
 
 fn parse_orbit(s: &str) -> Orbit {
-    let ns: Vec<&str> = s.split(")")
+    let ns: Vec<&str> = s.split(')')
         .collect();
 
     Orbit::new(ns[0], ns[1])
@@ -129,7 +130,7 @@ mod test {
 
     #[test]
     fn test_parse() {
-        assert_eq!(parse("COM)A\nA)B"), vec![Orbit::new("COM", "A"), Orbit::new("A", "B")]);
+        assert_eq!(parse("COM)A\r\nA)B"), vec![Orbit::new("COM", "A"), Orbit::new("A", "B")]);
     }
 
     #[test]
