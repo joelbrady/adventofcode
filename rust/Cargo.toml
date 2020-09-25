@@ -1,24 +1,8 @@
-[workspace]
+[package]
+name = "adventofcode"
+version = "0.1.0"
+authors = ["Joel Brady <jbrady@atlassian.com>"]
+edition = "2018"
 
-members = [
-    "parse",
-    "graph",
-    "intcode",
-    "input",
-    "2019/problem1",
-    "2019/problem2",
-    "2019/problem3",
-    "2019/problem4",
-    "2019/problem5",
-    "2019/problem6",
-    "2019/problem7",
-    "2019/problem8",
-    "2019/problem9",
-    "2019/problem10",
-    "2019/day11",
-    "2019/day12",
-    "2019/day13",
-    "2019/day14",
-    "2019/day15",
-    "2019/day16",
-]
+[dependencies]
+nom = "5.0.1"
