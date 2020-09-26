@@ -1,23 +1,20 @@
 use std::collections::HashMap;
 
 use nom::bytes::complete::tag;
-use nom::character::complete::{alpha1, newline, space0};
+use nom::character::complete::{alpha1, line_ending, newline, space0};
 use nom::IResult;
 use nom::multi::separated_nonempty_list;
 use nom::sequence::{preceded, separated_pair};
 
-use input::get_input;
-use parse::parse_i32;
+use crate::parse::parse_i32;
 
-fn main() {
-    let input_filename = "2019/day14/input";
-//    let input_filename = "input";
-    println!("The solution to part 1 is {}", solve_part1(input_filename));
-    println!("The solution to part 1 is {}", solve_part2(input_filename));
+pub fn main() {
+    let input = include_str!("input");
+    println!("The solution to part 1 is {}", solve_part1(input));
+    println!("The solution to part 1 is {}", solve_part2(input));
 }
 
-fn solve_part2(filename: &str) -> u64 {
-    let input = get_input(filename);
+fn solve_part2(input: &str) -> u64 {
     let (_, formulas) = parse_formulas(&input).unwrap();
 
     let map: HashMap<&str, Formula> = build_lookup_table(&formulas);
@@ -41,8 +38,7 @@ fn solve_part2(filename: &str) -> u64 {
     upper
 }
 
-fn solve_part1(filename: &str) -> u64 {
-    let input = get_input(filename);
+fn solve_part1(input: &str) -> u64 {
     let (_, formulas) = parse_formulas(&input).unwrap();
 
     let map: HashMap<&str, Formula> = build_lookup_table(&formulas);
@@ -70,7 +66,7 @@ struct Formula<'a> {
 }
 
 fn parse_formulas(input: &str) -> IResult<&str, Vec<Formula>> {
-    separated_nonempty_list(newline, parse_formula)(input)
+    separated_nonempty_list(line_ending, parse_formula)(input)
 }
 
 fn parse_formula<'a>(input: &'a str) -> IResult<&'a str, Formula> {
@@ -193,32 +189,32 @@ mod test {
 
     #[test]
     fn test_example1() {
-        let answer = solve_part1("example1");
+        let answer = solve_part1(include_str!("example1"));
         assert_eq!(answer, 31);
     }
 
     #[test]
     fn test_example2() {
-        let answer = solve_part1("example1");
+        let answer = solve_part1(include_str!("example1"));
         assert_eq!(answer, 31);
     }
 
     #[test]
     fn test_solution_part1() {
-        let answer = solve_part1("input");
+        let answer = solve_part1(include_str!("input"));
         assert_eq!(answer, 201_324);
     }
 
     #[test]
     fn test_part2_example_large1() {
-        let answer = solve_part2("example_large1");
+        let answer = solve_part2(include_str!("example_large1"));
 
         assert_eq!(answer, 82_892_753);
     }
 
     #[test]
     fn test_part2_solution() {
-        let answer = solve_part2("input");
+        let answer = solve_part2(include_str!("input"));
 
         assert_eq!(answer, 6326857);
     }

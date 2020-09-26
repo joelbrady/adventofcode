@@ -1,8 +1,7 @@
-use input::get_input;
-use intcode::{parse_program, Machine, StoppedState};
+use crate::cal2019::intcode::{Machine, parse_program, StoppedState};
 
-fn main() {
-    let input = get_input("input");
+pub fn main() {
+    let input = include_str!("input");
     let solution = solve(&input);
 
     println!("The solution to part 1 is {}", solution);
@@ -166,7 +165,7 @@ mod test {
 
     #[test]
     fn test_solutions() {
-        let input = get_input("input");
+        let input = include_str!("input");
         let solution = solve(&input);
 
         assert_eq!(solution, 87138);

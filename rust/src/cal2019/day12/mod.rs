@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-fn main() {
+pub fn main() {
     println!("The solution to part 1 is {}", part1());
     println!("The solution to part 2 is {}", part2())
 }
@@ -332,5 +332,11 @@ mod test {
     #[test]
     fn test_lcm() {
         assert_eq!(lcm(1, 2, 3), 6);
+    }
+
+    #[test]
+    fn test_solution() {
+        assert_eq!(part1(), 8287);
+        assert_eq!(part2(), 528250271633772);
     }
 }

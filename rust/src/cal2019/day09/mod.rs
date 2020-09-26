@@ -1,8 +1,7 @@
-use input::get_input;
-use intcode::{parse_program, Machine};
+use crate::cal2019::intcode::{Machine, parse_program};
 
-fn main() {
-    let input = get_input("input");
+pub fn main() {
+    let input = include_str!("input");
     let program = parse_program(&input);
     let mut m = Machine::new_test_mode(&program, &vec![1]);
     m.run();
@@ -19,7 +18,6 @@ fn main() {
 #[cfg(test)]
 mod test {
     use super::*;
-    use intcode::{parse_program, Machine};
 
     #[test]
     fn test_example1() {
@@ -54,7 +52,7 @@ mod test {
     #[test]
     fn test_solution_part1() {
         let expected = 4288078517;
-        let input = get_input("input");
+        let input = include_str!("input");
         let program = parse_program(&input);
         let mut m = Machine::new_test_mode(&program, &vec![1]);
         m.run();

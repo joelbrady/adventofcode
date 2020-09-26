@@ -2,16 +2,15 @@ use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
 
-use input::get_input;
-use intcode::{Machine, parse_program, StoppedState};
+use crate::cal2019::intcode::{Machine, parse_program, StoppedState};
 
-fn main() {
+pub fn main() {
     println!("The solution to part 1 is {}", solve_part1());
     println!("The solution to part 2 is {}", solve_part2());
 }
 
 fn solve_part1() -> u64 {
-    let input = get_input("2019/day15/input");
+    let input = include_str!("input");
     let program = parse_program(&input);
     let mut droid = IntCodePoweredRepairDroid::new(&program);
     let map = explore_entire_map(&mut droid);
@@ -20,7 +19,7 @@ fn solve_part1() -> u64 {
 }
 
 fn solve_part2() -> u64 {
-    let input = get_input("2019/day15/input");
+    let input = include_str!("input");
     let program = parse_program(&input);
     let mut droid = IntCodePoweredRepairDroid::new(&program);
     let map = explore_entire_map(&mut droid);
@@ -314,5 +313,16 @@ impl Tile {
             Wall => "#",
             OxygenSystem => "O",
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_solution() {
+        assert_eq!(solve_part1(), 380);
+        assert_eq!(solve_part2(), 410);
     }
 }

@@ -1,4 +1,6 @@
-fn main() {
+use nom::InputIter;
+
+pub fn main() {
     let input = include_str!("input");
     println!("The solution to part 1 is {}", solve_part1(&input));
     println!("The solution to part 2 is {}", solve_part2(&input));
@@ -16,13 +18,18 @@ fn solve_part1(input: &str) -> String {
     result.join("")
 }
 
-fn solve_part2(input: &str) -> String {
-    let input = parse_input(input);
+fn solve_part2(raw_input: &str) -> String {
+    let input = parse_input(raw_input);
     let input = input.repeat(10000);
-    // TODO parse offset from file
-    let result = fft_part2(&input, 100, 5971723);
-    let a: Vec<String> = result.iter().skip(5971723).take(8).map(|n| n.to_string()).collect();
+    let offset = get_offset(raw_input);
+    let result = fft_part2(&input, 100, offset);
+    let a: Vec<String> = result.iter().skip(offset).take(8).map(|n| n.to_string()).collect();
     a.join("")
+}
+
+fn get_offset(s: &str) -> usize {
+    let a: String = s.iter_elements().take(7).collect();
+    a.parse().unwrap()
 }
 
 fn parse_input(s: &str) -> Vec<i32> {

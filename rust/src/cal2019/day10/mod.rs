@@ -1,24 +1,22 @@
 use std::collections::HashSet;
-use num_integer::gcd;
-use input::get_input;
 use std::f64::consts::PI;
 
-fn main() {
-    let (_, solution) = solve("input");
+use num_integer::gcd;
+
+pub fn main() {
+    let (_, solution) = solve(include_str!("input"));
     println!("the solution to part 1 is {}", solution);
-    let solution = solve2("input");
+    let solution = solve2(include_str!("input"));
     println!("the solution to part 2 is {}", solution);
 }
 
-fn solve(filename: &str) -> ((i32, i32), usize) {
-    let input = get_input(filename);
-    let f = Field::parse(&input);
+fn solve(input: &str) -> ((i32, i32), usize) {
+    let f = Field::parse(input);
     f.largest_visibility()
 }
 
-fn solve2(filename: &str) -> i32 {
-    let input = get_input(filename);
-    let mut f = Field::parse(&input);
+fn solve2(input: &str) -> i32 {
+    let mut f = Field::parse(input);
     let destroyed = f.destroy();
     let (x, y) = destroyed[199];
     (x * 100) + y
@@ -43,6 +41,9 @@ impl Field {
                 '\n' => {
                     x = 0;
                     y += 1;
+                }
+                '\r' => {
+                    // ignore on windows
                 }
                 c => panic!("unexpected char {}", c),
             };
@@ -83,7 +84,7 @@ impl Field {
         }
         visible.remove(a);
         visible.iter()
-            .map(|v| *v)
+            .copied()
             .collect()
     }
 
@@ -116,6 +117,10 @@ impl Field {
                 true
             }
         }
+    }
+
+    fn num_visible_from(&self, a: &(i32, i32)) -> usize {
+        self.visible_from(a).len()
     }
 
     fn destroy(&mut self) -> Vec<(i32, i32)> {
@@ -227,13 +232,11 @@ fn angle_q4(v: &(i32, i32)) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use input::get_input;
-
     use super::*;
 
     #[test]
     fn test_example1() {
-        let input = get_input("example1");
+        let input = include_str!("example1");
         let field = Field::parse(&input);
         assert_eq!(field.num_visible_from(&(1, 0)), 7);
         assert_eq!(field.num_visible_from(&(4, 0)), 7);
@@ -249,12 +252,14 @@ mod test {
 
     #[test]
     fn test_example2() {
-        assert_eq!(solve("example2"), ((5, 8), 33));
+        let input = include_str!("example2");
+        assert_eq!(solve(input), ((5, 8), 33));
     }
 
     #[test]
     fn test_example3() {
-        assert_eq!(solve("example3"), ((1, 2), 35));
+        let input = include_str!("example3");
+        assert_eq!(solve(input), ((1, 2), 35));
     }
 
 //    // this test is quite slow
@@ -290,11 +295,20 @@ mod test {
 
     #[test]
     fn test_part2_example1() {
-        let input = get_input("part2_example");
+        let input = include_str!("part2_example");
         let mut f = Field::parse(&input);
         let asteroid = f.destroy();
         assert_eq!(asteroid[0], (8, 1));
         assert_eq!(asteroid[1], (9, 0));
         assert_eq!(asteroid[2], (9, 1));
+    }
+
+    #[test]
+    fn test_solution() {
+        let input = include_str!("input");
+        let (_, solution) = solve(input);
+        assert_eq!(solution, 334);
+        let solution = solve2(input);
+        assert_eq!(solution, 1119);
     }
 }

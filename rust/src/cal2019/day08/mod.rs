@@ -1,7 +1,5 @@
-use input::get_input;
-
-fn main() {
-    let input = get_input("input");
+pub fn main() {
+    let input = include_str!("input");
     let input = parse(&input);
     let solution = solve(&input, 25, 6);
     println!("the solution to part 1 is {}", solution);
@@ -151,5 +149,13 @@ mod test {
 
         let solution = solve(&input, width, height);
         assert_eq!(solution, 1);
+    }
+
+    #[test]
+    fn test_solution() {
+        let input = include_str!("input");
+        let input = parse(&input);
+        let solution = solve(&input, 25, 6);
+        assert_eq!(solution, 2125);
     }
 }

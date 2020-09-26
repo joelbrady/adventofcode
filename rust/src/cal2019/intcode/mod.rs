@@ -44,6 +44,12 @@ impl Machine {
         self.output.remove(0)
     }
 
+    pub fn dump_output_buffer(&mut self) -> Vec<i64> {
+        let buf = self.output.clone();
+        self.output = vec![];
+        buf
+    }
+
     pub fn run(&mut self) -> StoppedState {
         use State::*;
 
@@ -212,6 +218,10 @@ impl Machine {
                 self.memory[addr as usize]
             }
         }
+    }
+
+    pub fn set_memory_at_location(&mut self, addr: usize, value: i64) {
+        self.memory[addr] = value;
     }
 }
 

@@ -1,12 +1,11 @@
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::ops::Add;
 
-use input::get_input;
-use intcode::{Machine, parse_program, StoppedState};
-use std::cmp::{min, max};
+use crate::cal2019::intcode::{Machine, parse_program, StoppedState};
 
-fn main() {
-    let input = get_input("input");
+pub fn main() {
+    let input = include_str!("input");
     let program = parse_program(&input);
 
     println!("The solution to part 1 is {}", part1(&program));
@@ -55,7 +54,7 @@ fn part2(program: &[i64]) {
     let mut min_y: i64 = 0;
     let mut max_x: i64 = 0;
     let mut max_y: i64 = 0;
-    for (position, _) in &hull.painted {
+    for position in hull.painted.keys() {
         let (x, y) = position.as_tuple();
         min_x = min(x, min_x);
         min_y = min(y, min_y);
@@ -240,4 +239,21 @@ impl Robot {
 enum State {
     Running((Color, Turn)),
     Halted
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_solution() {
+        let input = include_str!("input");
+        let program = parse_program(&input);
+
+        let solution = part1(&program);
+
+        assert_eq!(solution, 2720);
+
+        part2(&program);
+    }
 }

@@ -1,8 +1,8 @@
-use input::get_input;
-use intcode::{parse_program, Machine, StoppedState};
+use crate::cal2019::intcode::{Machine, parse_program, StoppedState};
 
-fn main() {
-    let program = parse_program(&get_input("2019/day13/input"));
+pub fn main() {
+    let input = include_str!("input");
+    let program = parse_program(input);
     println!("the solution to part 1 is {}", part1(&program));
     println!("the solution to part 2 is {}", part2(&program));
 }
@@ -158,5 +158,18 @@ impl Tile {
             4 => Ball,
             _ => unimplemented!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_solution() {
+        let input = include_str!("input");
+        let program = parse_program(input);
+        assert_eq!(part1(&program), 363);
+        assert_eq!(part2(&program), 17159);
     }
 }
