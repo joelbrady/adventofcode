@@ -45,9 +45,7 @@ impl Machine {
     }
 
     pub fn dump_output_buffer(&mut self) -> Vec<i64> {
-        let buf = self.output.clone();
-        self.output = vec![];
-        buf
+        std::mem::replace(&mut self.output, vec![])
     }
 
     pub fn run(&mut self) -> StoppedState {
