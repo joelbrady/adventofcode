@@ -1,11 +1,42 @@
-use nom::InputIter;
-
 use crate::cal2019::intcode::{Machine, parse_program};
 
 pub fn main() {
     let input = include_str!("input");
     let solution = solve1(input);
-    println!("The solution to part 1 is {}", solution)
+    println!("The solution to part 1 is {}", solution);
+
+    let main = "B,A,B,B,A,C,A,C,C,A";
+    let a = "R,8,L,12,L,12,R,8";
+    let b = "L,12,R,8,L,6,R,8,L,6";
+    let c = "L,6,R,6,L,12";
+
+    let solution = solve2(input, main, a, b, c);
+    println!("The solution to part 2 is {}", solution);
+}
+
+fn solve2(input: &str, main: &str, a: &str, b: &str, c: &str) -> i64 {
+    let program = parse_program(input);
+    let mut m = Machine::new_feedback_mode(&program);
+    m.set_memory_at_location(0, 2);
+    m.run();
+    input_line(main, &mut m);
+    input_line(a, &mut m);
+    input_line(b, &mut m);
+    input_line(c, &mut m);
+    input_line("n", &mut m);
+
+    let raw_output = m.dump_output_buffer();
+    raw_output[raw_output.len() - 1]
+}
+
+fn input_line(line: &str, m: &mut Machine) {
+    line.as_bytes()
+        .iter()
+        .filter(|b| **b != b'\r')
+        .for_each(|b| m.input(*b as i64));
+
+    m.input('\n' as i64);
+    m.run();
 }
 
 fn solve1(input: &str) -> u64 {
@@ -49,7 +80,7 @@ fn find_intersections(frame: &str) -> Vec<Intersection> {
     let mut intersections: Vec<Intersection> = vec![];
 
     let rows: Vec<&str> = frame.lines().collect();
-    let tiles: Vec<Vec<char>> = rows.iter().map(|row| row.iter_elements().collect()).collect();
+    let tiles: Vec<Vec<char>> = rows.iter().map(|row| row.chars().collect()).collect();
 
     for row in 1..(rows.len() - 2) {
         for col in 1..(tiles[0].len() - 1) {
@@ -90,4 +121,55 @@ mod test {
 
         assert_eq!(solution, 5068)
     }
+
+    // #[test]
+    // fn print_input() {
+    //     let input = include_str!("input");
+    //     let output = get_output_part1(input);
+    //     print!("{}", output)
+    // }
+
+    #[test]
+    fn part2_debug() {
+        let a = "R,8,L,12,L,12,R,8";
+        let b = "L,12,R,8,L,6,R,8,L,6";
+        let c = "L,6,R,6,L,12";
+
+        let expected = "L,12,R,8,L,6,R,8,L,6,R,8,L,12,L,12,R,8,L,12,R,8,L,6,R,8,L,6,L,12,R,8,L,6,R,8,L,6,R,8,L,12,L,12,R,8,L,6,R,6,L,12,R,8,L,12,L,12,R,8,L,6,R,6,L,12,L,6,R,6,L,12,R,8,L,12,L,12,R,8";
+
+        let actual = vec![b, a, b, b, a, c, a, c, c, a].join(",");
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn solve_part2() {
+        let input = include_str!("input");
+        let main = "B,A,B,B,A,C,A,C,C,A";
+        let a = "R,8,L,12,L,12,R,8";
+        let b = "L,12,R,8,L,6,R,8,L,6";
+        let c = "L,6,R,6,L,12";
+
+        let solution = solve2(input, main, a, b, c);
+
+        assert_eq!(solution, 1415975)
+    }
 }
+
+/*
+ L,12,R,8,L,6,R,8,L,6,R,8,L,12,L,12,R,8,L,12,R,8,L,6,R,8,L,6,L,12,R,8,L,6,R,8,L,6,R,8,L,12,L,12,R,8,L,6,R,6,L,12,R,8,L,12,L,12,R,8,L,6,R,6,L,12,L,6,R,6,L,12,R,8,L,12,L,12,R,8
+ */
+
+/*
+A = L,12,R,8,L,6,R,8,L,6,R,8,L,12,L,12,R,8
+B =
+C =
+ */
+
+/*
+Main = B,A,B,B,A,C,A,C,C,A
+
+A = R,8,L,12,L,12,R,8
+B = L,12,R,8,L,6,R,8,L,6
+C = L,6,R,6,L,12
+ */
