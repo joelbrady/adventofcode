@@ -135,6 +135,7 @@ enum Tile {
 }
 
 impl Tile {
+    #[allow(dead_code)]
     fn as_str(self) -> &'static str {
         use Tile::*;
 

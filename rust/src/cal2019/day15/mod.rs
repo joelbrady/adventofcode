@@ -87,6 +87,7 @@ impl Map {
         self.max_y = max(y, self.max_y);
     }
 
+    #[allow(dead_code)]
     fn display(&self, droid_location: &Coordinates) {
         for y in (self.min_y - 1)..=(self.max_y + 1) {
             for x in (self.min_x - 1)..=(self.max_x + 1) {

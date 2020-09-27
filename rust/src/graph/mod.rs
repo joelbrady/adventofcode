@@ -23,6 +23,7 @@ impl Graph<String> {
         Graph { edges }
     }
 
+    #[allow(dead_code)]
     pub fn has_edge(&self, a: &str, b: &str) -> bool {
         self.edges.get(a)
             .map(|v| v.contains(&String::from(b)))

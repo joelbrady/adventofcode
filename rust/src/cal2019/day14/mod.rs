@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use nom::bytes::complete::tag;
-use nom::character::complete::{alpha1, line_ending, newline, space0};
+use nom::character::complete::{alpha1, line_ending, space0};
 use nom::IResult;
 use nom::multi::separated_nonempty_list;
 use nom::sequence::{preceded, separated_pair};

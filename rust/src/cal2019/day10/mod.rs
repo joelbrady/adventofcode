@@ -119,6 +119,7 @@ impl Field {
         }
     }
 
+    #[allow(dead_code)]
     fn num_visible_from(&self, a: &(i32, i32)) -> usize {
         self.visible_from(a).len()
     }
