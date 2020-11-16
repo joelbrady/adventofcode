@@ -32,4 +32,5 @@ fn call_2019() {
     cal2019::day15::main();
     cal2019::day16::main();
     cal2019::day17::main();
+    cal2019::day18::main();
 }
