@@ -1,6 +1,7 @@
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use nom::lib::std::collections::VecDeque;
+use nom::lib::std::collections::{HashSet, VecDeque};
 
 pub fn main() {
     let input = include_str!("input");
@@ -13,19 +14,24 @@ pub fn main() {
 
 fn solve(input: &InitialState) -> u64 {
     let start = Node {
-        map: input.map.clone(),
+        map: Rc::new(input.map.clone()),
         position: input.start,
         steps: 0,
     };
     let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
+    let mut seen: HashSet<Node> = HashSet::new();
 
     queue.push_back(Rc::new(start));
 
     while let Some(node) = queue.pop_front() {
-        node.map.display(&node.position);
+        if seen.contains(&node) {
+            continue;
+        }
+        // node.map.display(&node.position);
         if is_terminal(&node) {
             return node.steps
         }
+        seen.insert((*node).clone());
         let children = find_children(&node);
         children.into_iter().for_each(|n| queue.push_back(Rc::new(n)))
     }
@@ -60,7 +66,7 @@ fn get_key(label: &char, new_position: &Position, current: &Node) -> Node {
     // remove the door with label
     // remove the key with label (it's at new_position)
     // then move to new position
-    let mut map = current.map.clone();
+    let mut map = (*current.map).clone();
     let steps = current.steps + 1;
     let position = *new_position;
 
@@ -68,7 +74,7 @@ fn get_key(label: &char, new_position: &Position, current: &Node) -> Node {
     remove_key(&mut map, &new_position);
 
     Node {
-        map,
+        map: Rc::new(map),
         steps,
         position,
     }
@@ -95,7 +101,7 @@ fn remove_key(map: &mut Map, position: &Position) {
 fn move_to_new_position(new_position: &Position, current: &Node) -> Node {
     Node {
         position: *new_position,
-        map: current.map.clone(),
+        map: Rc::clone(&current.map),
         steps: current.steps + 1,
     }
 }
@@ -108,14 +114,27 @@ fn is_terminal(node: &Node) -> bool {
     !has_key
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 struct Node {
-    map: Map,
+    map: Rc<Map>,
     position: Position,
     steps: u64,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.position.hash(state);
+        self.map.hash(state);
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.position == other.position && self.map == other.map
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum Tile {
     OpenPassage,
     Door(char),
@@ -145,7 +164,7 @@ fn parse_key_or_door(c: char) -> Tile {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct Map {
     tiles: Vec<Vec<Tile>>
 }
@@ -184,7 +203,7 @@ impl Map {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 struct Position {
     row: usize,
     col: usize,
@@ -271,6 +290,56 @@ mod tests {
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
         let expected = 8u64;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_example2() {
+        let example_input = include_str!("example2");
+        let example_input = parse_input(example_input);
+        let actual = solve(&example_input);
+        let expected = 86u64;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_example3() {
+        let example_input = include_str!("example3");
+        let example_input = parse_input(example_input);
+        let actual = solve(&example_input);
+        let expected = 132u64;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_example4() {
+        let example_input = include_str!("example4");
+        let example_input = parse_input(example_input);
+        let actual = solve(&example_input);
+        let expected = 136u64;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_example5() {
+        let example_input = include_str!("example5");
+        let example_input = parse_input(example_input);
+        let actual = solve(&example_input);
+        let expected = 81u64;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve() {
+        let example_input = include_str!("input");
+        let example_input = parse_input(example_input);
+        let actual = solve(&example_input);
+        let expected = 3512u64;
 
         assert_eq!(actual, expected)
     }
