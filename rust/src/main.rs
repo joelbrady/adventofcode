@@ -1,11 +1,13 @@
 mod cal2018;
 mod cal2019;
+mod cal2020;
 mod graph;
 mod parse;
 
 fn main() {
     call_2018();
     call_2019();
+    call_2020();
 }
 
 fn call_2018() {
@@ -33,4 +35,8 @@ fn call_2019() {
     cal2019::day16::main();
     cal2019::day17::main();
     cal2019::day18::main();
+}
+
+fn call_2020() {
+    cal2020::day01::main();
 }
