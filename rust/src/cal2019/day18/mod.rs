@@ -1,7 +1,6 @@
+use std::collections::{HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-
-use nom::lib::std::collections::{HashSet, VecDeque};
 
 pub fn main() {
     let input = include_str!("input");
@@ -177,30 +176,30 @@ impl Map {
             Some(self.tiles[position.row][position.col])
         }
     }
-
-    fn display(&self, position: &Position) {
-        let height = self.tiles.len();
-        let width = self.tiles[0].len();
-
-        for row in 0..height {
-            for col in 0..width {
-                if row == position.row && col == position.col {
-                    print!("@")
-                } else {
-                    let tile = self.tiles[row][col];
-                    match tile {
-                        Tile::OpenPassage => print!("."),
-                        Tile::Door(label ) => print!("{}", label.to_ascii_uppercase()),
-                        Tile::Key(label ) => print!("{}", label.to_ascii_lowercase()),
-                        Tile::Start => print!("@"),
-                        Tile::StoneWall => print!("#"),
-                    }
-                }
-
-            }
-            println!()
-        }
-    }
+    //
+    // fn display(&self, position: &Position) {
+    //     let height = self.tiles.len();
+    //     let width = self.tiles[0].len();
+    //
+    //     for row in 0..height {
+    //         for col in 0..width {
+    //             if row == position.row && col == position.col {
+    //                 print!("@")
+    //             } else {
+    //                 let tile = self.tiles[row][col];
+    //                 match tile {
+    //                     Tile::OpenPassage => print!("."),
+    //                     Tile::Door(label ) => print!("{}", label.to_ascii_uppercase()),
+    //                     Tile::Key(label ) => print!("{}", label.to_ascii_lowercase()),
+    //                     Tile::Start => print!("@"),
+    //                     Tile::StoneWall => print!("#"),
+    //                 }
+    //             }
+    //
+    //         }
+    //         println!()
+    //     }
+    // }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
