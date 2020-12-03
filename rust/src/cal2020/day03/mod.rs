@@ -63,8 +63,12 @@ fn solve(input: &Map) -> usize {
     let vector = Vector { right: 3, down: 1};
     let tiles_encountered = walk(input, &vector);
 
-    tiles_encountered.into_iter()
-        .filter(|tile| *tile == Tile::Tree)
+    trees_in_walk(&tiles_encountered)
+}
+
+fn trees_in_walk(walk: &[Tile]) -> usize {
+    walk.iter()
+        .filter(|tile| **tile == Tile::Tree)
         .count()
 }
 
@@ -83,7 +87,18 @@ fn walk(input: &Map, vector: &Vector) -> Vec<Tile> {
 }
 
 fn solve2(input: &Map) -> usize {
-    unimplemented!()
+    let vs = vec![
+        Vector { right: 1, down: 1},
+        Vector { right: 3, down: 1},
+        Vector { right: 5, down: 1},
+        Vector { right: 7, down: 1},
+        Vector { right: 1, down: 2},
+    ];
+
+    vs.iter()
+        .map(|v| walk(input, v))
+        .map(|walk| trees_in_walk(&walk))
+        .product()
 }
 
 #[cfg(test)]
@@ -108,6 +123,28 @@ mod test {
 
         let expected = 162;
         let actual = solve(&input);
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_example_part2() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let expected = 336;
+        let actual = solve2(&input);
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 162;
+        let actual = solve2(&input);
 
         assert_eq!(expected, actual);
     }
