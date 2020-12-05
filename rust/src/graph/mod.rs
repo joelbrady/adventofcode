@@ -11,9 +11,10 @@ impl Graph<String> {
         Graph { edges: HashMap::new() }
     }
 
-    pub fn add_edge(&self, a: &str, b: &str) -> Self {
-        let a = String::from(a);
-        let b = String::from(b);
+    pub fn add_edge<V>(&self, a: V, b: V) -> Self
+    where V: Into<String> {
+        let a = a.into();
+        let b = b.into();
         let mut edges = self.edges.clone();
         let mut children = edges.get(&a)
             .cloned()
@@ -24,14 +25,16 @@ impl Graph<String> {
     }
 
     #[allow(dead_code)]
-    pub fn has_edge(&self, a: &str, b: &str) -> bool {
-        self.edges.get(a)
-            .map(|v| v.contains(&String::from(b)))
+    pub fn has_edge<V>(&self, a: V, b: V) -> bool
+    where V: Into<String> {
+        self.edges.get(&a.into())
+            .map(|v| v.contains(&b.into()))
             .unwrap_or(false)
     }
 
-    pub fn get_children(&self, a: &str) -> Vec<String> {
-        self.edges.get(a)
+    pub fn get_children<V>(&self, a: V) -> Vec<String>
+    where V: Into<String> {
+        self.edges.get(&a.into())
             .cloned()
             .unwrap_or_else(Vec::new)
     }
