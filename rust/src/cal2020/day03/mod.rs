@@ -143,7 +143,7 @@ mod test {
         let input = include_str!("input");
         let input = parse_input(input);
 
-        let expected = 162;
+        let expected = 3064612320;
         let actual = solve2(&input);
 
         assert_eq!(expected, actual);
