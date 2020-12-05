@@ -297,42 +297,42 @@ impl Map {
         }
     }
 
-    fn display(&self, node: &Node) {
-        let height = self.tiles.len();
-        let width = self.tiles[0].len();
-
-        for row in 0..height {
-            for col in 0..width {
-                let p = Position { row, col };
-                if node.robot_positions.contains(&p) {
-                    print!("@")
-                } else {
-                    let tile = self.tiles[row][col];
-                    match tile {
-                        Tile::OpenPassage => print!("."),
-                        Tile::Door(label) => {
-                            if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
-                                print!("{}", label.to_ascii_uppercase())
-                            } else {
-                                print!(".")
-                            }
-                        }
-                        Tile::Key(label) => {
-                            if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
-                                print!("{}", label.to_ascii_lowercase())
-                            } else {
-                                print!(".")
-                            }
-                        }
-                        Tile::Start => print!("@"),
-                        Tile::StoneWall => print!("#"),
-                    }
-                }
-            }
-            println!();
-        }
-        println!();
-    }
+    // fn display(&self, node: &Node) {
+    //     let height = self.tiles.len();
+    //     let width = self.tiles[0].len();
+    //
+    //     for row in 0..height {
+    //         for col in 0..width {
+    //             let p = Position { row, col };
+    //             if node.robot_positions.contains(&p) {
+    //                 print!("@")
+    //             } else {
+    //                 let tile = self.tiles[row][col];
+    //                 match tile {
+    //                     Tile::OpenPassage => print!("."),
+    //                     Tile::Door(label) => {
+    //                         if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
+    //                             print!("{}", label.to_ascii_uppercase())
+    //                         } else {
+    //                             print!(".")
+    //                         }
+    //                     }
+    //                     Tile::Key(label) => {
+    //                         if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
+    //                             print!("{}", label.to_ascii_lowercase())
+    //                         } else {
+    //                             print!(".")
+    //                         }
+    //                     }
+    //                     Tile::Start => print!("@"),
+    //                     Tile::StoneWall => print!("#"),
+    //                 }
+    //             }
+    //         }
+    //         println!();
+    //     }
+    //     println!();
+    // }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]

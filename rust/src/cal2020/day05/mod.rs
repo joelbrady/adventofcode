@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 pub fn main() {
     let input = include_str!("input");
 
@@ -58,7 +60,23 @@ fn parse_boarding_pass(pass: &str) -> (u32, u32) {
 }
 
 fn solve2(input: &str) -> u32 {
-    unimplemented!()
+    let ids: Vec<u32> = input.lines()
+        .map(|pass| get_id(pass))
+        .collect();
+
+    let min_id = *ids.iter().min().unwrap();
+    let max_id = *ids.iter().max().unwrap();
+    let mut seats: HashSet<u32> = HashSet::new();
+    for n in min_id..max_id {
+        seats.insert(n);
+    }
+
+    ids.iter()
+        .for_each(|id| {
+            seats.remove(id);
+        });
+
+    *seats.iter().next().unwrap()
 }
 
 #[cfg(test)]
@@ -103,6 +121,16 @@ mod test {
 
         let actual = solve(input);
         let expected = 842;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+
+        let actual = solve2(input);
+        let expected = 617;
 
         assert_eq!(actual, expected)
     }
