@@ -1,135 +1,255 @@
-use std::collections::{HashSet, VecDeque};
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, BTreeSet};
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+/*
+TODO
+try building a simpler (weighted) graph, where each node is a door, the edges have weights of the number of steps between nodes
+should be much simpler than this giant A*
+ */
 pub fn main() {
     let input = include_str!("input");
     let input = parse_input(input);
 
     let answer = solve(&input);
-
     println!("The solution to part 1 is {}", answer);
+
+    let answer2 = solve2(&input);
+    println!("The solution to part 2 is {}", answer2);
 }
 
-fn solve(input: &InitialState) -> u64 {
+fn solve(input: &InitialState) -> u32 {
     let start = Node {
         map: Rc::new(input.map.clone()),
-        position: input.start,
+        keys_collected: BTreeSet::new(),
+        robot_positions: vec![input.start],
         steps: 0,
+        keys_remaining: input.num_keys as u32,
     };
-    let mut queue: VecDeque<Rc<Node>> = VecDeque::new();
-    let mut seen: HashSet<Node> = HashSet::new();
 
-    queue.push_back(Rc::new(start));
+    solve_any(start, &input.map)
+}
 
-    while let Some(node) = queue.pop_front() {
+fn solve2(input: &InitialState) -> u32 {
+    let start = input.start;
+    let robot_positions = vec![
+        Position { row: start.row - 1, col: start.col - 1 },
+        Position { row: start.row + 1, col: start.col - 1 },
+        Position { row: start.row - 1, col: start.col + 1 },
+        Position { row: start.row + 1, col: start.col + 1 },
+    ];
+
+    let mut map = input.map.clone();
+    map.tiles[start.row][start.col] = Tile::StoneWall;
+    map.tiles[start.row - 1][start.col] = Tile::StoneWall;
+    map.tiles[start.row + 1][start.col] = Tile::StoneWall;
+    map.tiles[start.row][start.col - 1] = Tile::StoneWall;
+    map.tiles[start.row][start.col + 1] = Tile::StoneWall;
+
+    let start_node = Node {
+        map: Rc::new(map.clone()),
+        keys_collected: BTreeSet::new(),
+        keys_remaining: input.num_keys,
+        steps: 0,
+        robot_positions,
+    };
+
+    solve_any(start_node, &map)
+}
+
+fn solve_any(start: Node, map: &Map) -> u32 {
+    let mut queue: BinaryHeap<Rc<Node>> = BinaryHeap::new();
+    let mut seen: HashSet<Rc<Node>> = HashSet::new();
+
+    queue.push(Rc::new(start));
+
+    while let Some(node) = queue.pop() {
         if seen.contains(&node) {
             continue;
         }
-        // node.map.display(&node.position);
+        // map.display(&node);
         if is_terminal(&node) {
-            return node.steps
+            return node.steps;
         }
-        seen.insert((*node).clone());
-        let children = find_children(&node);
-        children.into_iter().for_each(|n| queue.push_back(Rc::new(n)))
+        seen.insert(Rc::clone(&node));
+        let children = find_children(&node, map);
+        children.into_iter().for_each(|n| queue.push(Rc::new(n)))
     }
 
     panic!("Could not find solution")
 }
 
-fn find_children(node: &Node) -> Vec<Node> {
-    let current_pos = &node.position;
-    let map = &node.map;
-    let around: Vec<(Position, Tile)> = current_pos.around().into_iter()
-        .map(|pos| (pos, map.get_at_position(&pos)))
-        .filter_map(|(pos, maybe_tile)| maybe_tile.map(|tile| (pos, tile)))
-        .collect();
+fn find_children(node: &Node, map: &Map) -> Vec<Node> {
+    let mut new_nodes = vec![];
 
-    // neighbour empty squares
-    let empty = around.iter()
-        .filter(|(_, tile)| *tile == Tile::OpenPassage)
-        .map(|(pos, _)| move_to_new_position(pos, node));
+    for robot in 0..node.robot_positions.len() {
+        let current_pos = node.robot_positions[robot];
+        current_pos.around()
+            .into_iter()
+            .map(|pos| (pos, map.get_at_position(&pos)))
+            // skip tiles not in bounds
+            .filter_map(|(pos, maybe_tile)| maybe_tile.map(|tile| (pos, tile)))
+            .filter_map(|(pos, tile)| match tile {
+                Tile::Key(label) => {
+                    if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
+                        Some(get_key(label, &pos, node, robot))
+                    } else {
+                        Some(move_to_new_position(&pos, node, robot))
+                    }
+                }
+                Tile::OpenPassage => Some(move_to_new_position(&pos, node, robot)),
+                Tile::Door(label) => if node.keys_collected.contains(&(label.to_ascii_uppercase())) {
+                    Some(move_to_new_position(&pos, node, robot))
+                } else {
+                    None
+                }
+                _ => None,
+            })
+            .for_each(|node| new_nodes.push(node));
+    }
 
-    // neighbour key (remove key + door)
-    let gain_key = around.iter()
-        .filter_map(|(pos, tile)| match tile {
-            Tile::Key(label) => Some(get_key(label, pos, node)),
-            _ => None
-        });
-
-    empty.chain(gain_key).collect()
+    new_nodes
 }
 
-fn get_key(label: &char, new_position: &Position, current: &Node) -> Node {
-    // remove the door with label
-    // remove the key with label (it's at new_position)
-    // then move to new position
-    let mut map = (*current.map).clone();
-    let steps = current.steps + 1;
-    let position = *new_position;
+fn get_key(key: char, new_position: &Position, current: &Node, robot: usize) -> Node {
+    let mut keys_collected = current.keys_collected.clone();
+    keys_collected.insert(key.to_ascii_uppercase());
 
-    remove_door(&mut map, *label);
-    remove_key(&mut map, &new_position);
+    let mut new_positions = current.robot_positions.clone();
+    new_positions[robot] = *new_position;
 
     Node {
-        map: Rc::new(map),
-        steps,
-        position,
+        map: Rc::clone(&current.map),
+        keys_collected,
+        steps: current.steps + 1,
+        robot_positions: new_positions,
+        keys_remaining: current.keys_remaining - 1,
     }
 }
 
-fn remove_door(map: &mut Map, label: char) {
-    let height = map.tiles.len();
-    let width = map.tiles[0].len();
+fn move_to_new_position(new_position: &Position, current: &Node, robot: usize) -> Node {
+    let mut robot_positions = current.robot_positions.clone();
+    robot_positions[robot] = *new_position;
+    Node {
+        map: Rc::clone(&current.map),
+        keys_collected: current.keys_collected.clone(),
+        robot_positions,
+        steps: current.steps + 1,
+        keys_remaining: current.keys_remaining,
+    }
+}
 
-    for row in 0..height {
-        for col in 0..width {
-            if map.tiles[row][col] == Tile::Door(label) {
-                map.tiles[row][col] = Tile::OpenPassage;
-                return
+fn is_terminal(node: &Node) -> bool {
+    node.keys_remaining == 0
+}
+
+#[derive(Debug, Clone, Eq)]
+struct Node {
+    // could store CoW
+    map: Rc<Map>,
+    keys_collected: BTreeSet<char>,
+    robot_positions: Vec<Position>,
+    steps: u32,
+    keys_remaining: u32,
+}
+
+impl Node {
+    fn sum_of_each_robots_max_manhattan_distance(&self) -> u32 {
+        self.robot_positions.iter()
+            .map(|pos| self.find_max_manhattan_to_any_key_in_zone(pos))
+            .sum()
+    }
+
+    fn find_max_manhattan_to_any_key_in_zone(&self, robot_position: &Position) -> u32 {
+        let height = self.map.tiles.len();
+        let width = self.map.tiles[0].len();
+
+        let mut max = 0usize;
+
+        if robot_position.row < height / 2 {
+            if robot_position.col < width / 2 {
+                // top left
+                self.check_quadrant(robot_position, &mut max, 0, height / 2, 0, width / 2);
+            } else {
+                // top right
+                self.check_quadrant(robot_position, &mut max, 0, height / 2, width / 2, width);
+            }
+        } else if robot_position.col < width / 2 {
+            // bottom left
+            self.check_quadrant(robot_position, &mut max, height / 2, height, 0, width / 2);
+        } else {
+            // bottom right
+            self.check_quadrant(robot_position, &mut max, height / 2, height, width / 2, width);
+        }
+
+        max as u32
+    }
+
+    fn check_quadrant(
+        &self,
+        robot_position: &Position,
+        max: &mut usize,
+        row_start: usize,
+        row_end: usize,
+        col_start: usize,
+        col_end: usize,
+    ) {
+        for row in row_start..row_end {
+            for col in col_start..col_end {
+                let tile = self.map.tiles[row][col];
+                if let Tile::Key(label) = tile {
+                    if !self.keys_collected.contains(&label) {
+                        let width = usize_abs(robot_position.col, col);
+                        let height = usize_abs(robot_position.row, row);
+                        let manhattan = width + height;
+                        if manhattan > *max {
+                            *max = manhattan;
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-fn remove_key(map: &mut Map, position: &Position) {
-    map.tiles[position.row][position.col] = Tile::OpenPassage
-}
 
-fn move_to_new_position(new_position: &Position, current: &Node) -> Node {
-    Node {
-        position: *new_position,
-        map: Rc::clone(&current.map),
-        steps: current.steps + 1,
+fn usize_abs(a: usize, b: usize) -> usize {
+    if a < b {
+        b - a
+    } else {
+        a - b
     }
 }
 
-fn is_terminal(node: &Node) -> bool {
-    let has_key = node.map.tiles.iter()
-        .any(|row| row.iter()
-            .any(|col| matches!(col, Tile::Key(_))));
-
-    !has_key
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // let us = self.steps + self.keys_remaining;
+        // let them = other.steps + other.keys_remaining;
+        let us = self.steps + self.sum_of_each_robots_max_manhattan_distance();
+        let them = other.steps + other.sum_of_each_robots_max_manhattan_distance();
+        them.cmp(&us)
+    }
 }
 
-#[derive(Debug, Clone, Eq)]
-struct Node {
-    map: Rc<Map>,
-    position: Position,
-    steps: u64,
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Hash for Node {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.position.hash(state);
-        self.map.hash(state);
+        self.robot_positions.hash(state);
+        self.keys_collected.hash(state);
+        self.keys_remaining.hash(state);
     }
 }
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.position == other.position && self.map == other.map
+        self.robot_positions == other.robot_positions && self.keys_collected == other.keys_collected
     }
 }
 
@@ -176,30 +296,43 @@ impl Map {
             Some(self.tiles[position.row][position.col])
         }
     }
-    //
-    // fn display(&self, position: &Position) {
-    //     let height = self.tiles.len();
-    //     let width = self.tiles[0].len();
-    //
-    //     for row in 0..height {
-    //         for col in 0..width {
-    //             if row == position.row && col == position.col {
-    //                 print!("@")
-    //             } else {
-    //                 let tile = self.tiles[row][col];
-    //                 match tile {
-    //                     Tile::OpenPassage => print!("."),
-    //                     Tile::Door(label ) => print!("{}", label.to_ascii_uppercase()),
-    //                     Tile::Key(label ) => print!("{}", label.to_ascii_lowercase()),
-    //                     Tile::Start => print!("@"),
-    //                     Tile::StoneWall => print!("#"),
-    //                 }
-    //             }
-    //
-    //         }
-    //         println!()
-    //     }
-    // }
+
+    fn display(&self, node: &Node) {
+        let height = self.tiles.len();
+        let width = self.tiles[0].len();
+
+        for row in 0..height {
+            for col in 0..width {
+                let p = Position { row, col };
+                if node.robot_positions.contains(&p) {
+                    print!("@")
+                } else {
+                    let tile = self.tiles[row][col];
+                    match tile {
+                        Tile::OpenPassage => print!("."),
+                        Tile::Door(label) => {
+                            if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
+                                print!("{}", label.to_ascii_uppercase())
+                            } else {
+                                print!(".")
+                            }
+                        }
+                        Tile::Key(label) => {
+                            if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
+                                print!("{}", label.to_ascii_lowercase())
+                            } else {
+                                print!(".")
+                            }
+                        }
+                        Tile::Start => print!("@"),
+                        Tile::StoneWall => print!("#"),
+                    }
+                }
+            }
+            println!();
+        }
+        println!();
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
@@ -222,6 +355,7 @@ impl Position {
 struct InitialState {
     start: Position,
     map: Map,
+    num_keys: u32,
 }
 
 fn parse_input(input: &str) -> InitialState {
@@ -235,9 +369,15 @@ fn parse_input(input: &str) -> InitialState {
 
     let (map, start) = find_start_position(&map);
 
+    let num_keys = map.tiles.iter()
+        .flat_map(|a| a.iter())
+        .filter(|t| matches!(t, Tile::Key(_)))
+        .count();
+
     InitialState {
         start,
         map,
+        num_keys: num_keys as u32,
     }
 }
 
@@ -288,7 +428,7 @@ mod tests {
         let example_input = include_str!("example1");
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
-        let expected = 8u64;
+        let expected = 8;
 
         assert_eq!(actual, expected)
     }
@@ -298,7 +438,7 @@ mod tests {
         let example_input = include_str!("example2");
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
-        let expected = 86u64;
+        let expected = 86;
 
         assert_eq!(actual, expected)
     }
@@ -308,7 +448,7 @@ mod tests {
         let example_input = include_str!("example3");
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
-        let expected = 132u64;
+        let expected = 132;
 
         assert_eq!(actual, expected)
     }
@@ -318,7 +458,7 @@ mod tests {
         let example_input = include_str!("example4");
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
-        let expected = 136u64;
+        let expected = 136;
 
         assert_eq!(actual, expected)
     }
@@ -328,7 +468,7 @@ mod tests {
         let example_input = include_str!("example5");
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
-        let expected = 81u64;
+        let expected = 81;
 
         assert_eq!(actual, expected)
     }
@@ -338,7 +478,17 @@ mod tests {
         let example_input = include_str!("input");
         let example_input = parse_input(example_input);
         let actual = solve(&example_input);
-        let expected = 3512u64;
+        let expected = 3512;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example_part2() {
+        let example_input = include_str!("part2_example1");
+        let example_input = parse_input(example_input);
+        let actual = solve2(&example_input);
+        let expected = 72;
 
         assert_eq!(actual, expected)
     }
