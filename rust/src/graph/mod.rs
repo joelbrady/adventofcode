@@ -16,8 +16,8 @@ impl Graph<String> {
         let b = String::from(b);
         let mut edges = self.edges.clone();
         let mut children = edges.get(&a)
-            .map(|v| v.clone())
-            .unwrap_or_else(|| vec![]);
+            .cloned()
+            .unwrap_or_else(Vec::new);
         children.push(b);
         edges.insert(a, children);
         Graph { edges }
@@ -32,10 +32,9 @@ impl Graph<String> {
 
     pub fn get_children(&self, a: &str) -> Vec<String> {
         self.edges.get(a)
-            .map(|v| v.clone())
-            .unwrap_or_else(|| vec![])
+            .cloned()
+            .unwrap_or_else(Vec::new)
     }
-
 }
 
 #[cfg(test)]
