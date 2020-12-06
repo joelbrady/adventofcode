@@ -10,15 +10,21 @@ pub fn main() {
     let input = parse_input(input);
 
     let part1 = solve(&input);
-    // let part2 = solve2(input);
+    let part2 = solve2(&input);
 
     println!("The solution to part 1 is {}", part1);
-    // println!("The solution to part 2 is {}", part2);
+    println!("The solution to part 2 is {}", part2);
 }
 
 fn solve(input: &[Group]) -> i32 {
     input.iter()
         .map(|group| total_yeses(group))
+        .sum()
+}
+
+fn solve2(input: &[Group]) -> i32 {
+    input.iter()
+        .map(|group| all_yeses(group))
         .sum()
 }
 
@@ -28,6 +34,15 @@ fn total_yeses(group: &Group) -> i32 {
         .collect();
 
     yeses_for_group.len() as i32
+}
+
+fn all_yeses(group: &Group) -> i32 {
+    let mut yeses = group.forms[0].yeses.clone();
+    for form in group.forms.iter() {
+        yeses = yeses.intersection(&form.yeses).copied().collect();
+    }
+
+    yeses.len() as i32
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -96,6 +111,17 @@ mod test {
 
         let expected = 7120;
         let actual = solve(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 3570;
+        let actual = solve2(&input);
 
         assert_eq!(actual, expected)
     }
