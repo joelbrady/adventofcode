@@ -16,10 +16,32 @@ pub fn main() {
     let input = parse_input(input);
 
     let part1 = solve(input.clone().leak(), "shiny gold");
-    // let part2 = solve2(&input);
+    let part2 = solve2(&input);
 
     println!("The solution to part 1 is {}", part1);
-    // println!("The solution to part 2 is {}", part2);
+    println!("The solution to part 2 is {}", part2);
+}
+
+fn solve2(input: &[Rule]) -> u32 {
+    dfs2(input, "shiny gold")
+}
+
+fn dfs2(input: &[Rule], target: &str) -> u32 {
+    let mut total = 0;
+    for rule in input.iter() {
+        if rule.color == target {
+            if rule.contents.is_empty() {
+                total = 0;
+            } else {
+                for (color, count) in rule.contents.iter() {
+                    total += count;
+                    total += count * dfs2(input, color);
+                }
+            }
+        }
+    }
+
+    total
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -95,10 +117,6 @@ fn parse_content_pair(input: &str) -> IResult<&str, (&str, u32)> {
 }
 
 fn solve(input: &'static [Rule], target: &str) -> usize {
-    // look for bags that contain "shiny gold" bags
-    // then look for bags that can contain those
-    // keep going until at leaves
-
     let mut candidates = HashSet::new();
 
     dfs(input, &mut candidates, target);
@@ -183,6 +201,54 @@ mod test {
 
         let expected = 235;
         let actual = solve(input.clone().leak(), "shiny gold");
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example1_part2() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let expected = 32;
+
+        let actual = solve2(input.clone().leak());
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example2_part2() {
+        let input = include_str!("example_part2");
+        let input = parse_input(input);
+
+        let expected = 126;
+
+        let actual = solve2(input.clone().leak());
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve2_1_recurse() {
+        let input = vec![
+            Rule { color: "shiny gold", contents: [("blue", 2)].iter().copied().collect() },
+            Rule { color: "blue", contents: HashMap::new() },
+        ];
+
+        let actual = solve2(&input);
+
+        assert_eq!(actual, 2)
+    }
+
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 158493;
+        let actual = solve2(input.clone().leak());
 
         assert_eq!(actual, expected)
     }
