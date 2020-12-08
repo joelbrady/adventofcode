@@ -1,14 +1,10 @@
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, BTreeSet};
+use std::collections::{BinaryHeap, BTreeSet, HashMap};
 use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-/*
-TODO
-try building a simpler (weighted) graph, where each node is a door, the edges have weights of the number of steps between nodes
-should be much simpler than this giant A*
- */
 pub fn main() {
     let input = include_str!("input");
     let input = parse_input(input);
@@ -20,216 +16,17 @@ pub fn main() {
     println!("The solution to part 2 is {}", answer2);
 }
 
-fn solve(input: &InitialState) -> u32 {
-    let start = Node {
-        map: Rc::new(input.map.clone()),
-        keys_collected: BTreeSet::new(),
-        robot_positions: vec![input.start],
-        steps: 0,
-        keys_remaining: input.num_keys as u32,
-    };
-
-    solve_any(start, &input.map)
-}
-
-fn solve2(input: &InitialState) -> u32 {
-    let start = input.start;
-    let robot_positions = vec![
-        Position { row: start.row - 1, col: start.col - 1 },
-        Position { row: start.row + 1, col: start.col - 1 },
-        Position { row: start.row - 1, col: start.col + 1 },
-        Position { row: start.row + 1, col: start.col + 1 },
-    ];
-
-    let mut map = input.map.clone();
-    map.tiles[start.row][start.col] = Tile::StoneWall;
-    map.tiles[start.row - 1][start.col] = Tile::StoneWall;
-    map.tiles[start.row + 1][start.col] = Tile::StoneWall;
-    map.tiles[start.row][start.col - 1] = Tile::StoneWall;
-    map.tiles[start.row][start.col + 1] = Tile::StoneWall;
-
-    let start_node = Node {
-        map: Rc::new(map.clone()),
-        keys_collected: BTreeSet::new(),
-        keys_remaining: input.num_keys,
-        steps: 0,
-        robot_positions,
-    };
-
-    solve_any(start_node, &map)
-}
-
-fn solve_any(start: Node, map: &Map) -> u32 {
-    let mut queue: BinaryHeap<Rc<Node>> = BinaryHeap::new();
-    let mut seen: HashSet<Rc<Node>> = HashSet::new();
-
-    queue.push(Rc::new(start));
-
-    while let Some(node) = queue.pop() {
-        if seen.contains(&node) {
-            continue;
-        }
-        // map.display(&node);
-        if is_terminal(&node) {
-            return node.steps;
-        }
-        seen.insert(Rc::clone(&node));
-        let children = find_children(&node, map);
-        children.into_iter().for_each(|n| queue.push(Rc::new(n)))
-    }
-
-    panic!("Could not find solution")
-}
-
-fn find_children(node: &Node, map: &Map) -> Vec<Node> {
-    let mut new_nodes = vec![];
-
-    for robot in 0..node.robot_positions.len() {
-        let current_pos = node.robot_positions[robot];
-        current_pos.around()
-            .into_iter()
-            .map(|pos| (pos, map.get_at_position(&pos)))
-            // skip tiles not in bounds
-            .filter_map(|(pos, maybe_tile)| maybe_tile.map(|tile| (pos, tile)))
-            .filter_map(|(pos, tile)| match tile {
-                Tile::Key(label) => {
-                    if !node.keys_collected.contains(&(label.to_ascii_uppercase())) {
-                        Some(get_key(label, &pos, node, robot))
-                    } else {
-                        Some(move_to_new_position(&pos, node, robot))
-                    }
-                }
-                Tile::OpenPassage => Some(move_to_new_position(&pos, node, robot)),
-                Tile::Door(label) => if node.keys_collected.contains(&(label.to_ascii_uppercase())) {
-                    Some(move_to_new_position(&pos, node, robot))
-                } else {
-                    None
-                }
-                _ => None,
-            })
-            .for_each(|node| new_nodes.push(node));
-    }
-
-    new_nodes
-}
-
-fn get_key(key: char, new_position: &Position, current: &Node, robot: usize) -> Node {
-    let mut keys_collected = current.keys_collected.clone();
-    keys_collected.insert(key.to_ascii_uppercase());
-
-    let mut new_positions = current.robot_positions.clone();
-    new_positions[robot] = *new_position;
-
-    Node {
-        map: Rc::clone(&current.map),
-        keys_collected,
-        steps: current.steps + 1,
-        robot_positions: new_positions,
-        keys_remaining: current.keys_remaining - 1,
-    }
-}
-
-fn move_to_new_position(new_position: &Position, current: &Node, robot: usize) -> Node {
-    let mut robot_positions = current.robot_positions.clone();
-    robot_positions[robot] = *new_position;
-    Node {
-        map: Rc::clone(&current.map),
-        keys_collected: current.keys_collected.clone(),
-        robot_positions,
-        steps: current.steps + 1,
-        keys_remaining: current.keys_remaining,
-    }
-}
-
-fn is_terminal(node: &Node) -> bool {
-    node.keys_remaining == 0
-}
-
 #[derive(Debug, Clone, Eq)]
 struct Node {
-    // could store CoW
-    map: Rc<Map>,
-    keys_collected: BTreeSet<char>,
+    distance: u32,
+    keys_collected: Rc<BTreeSet<char>>,
     robot_positions: Vec<Position>,
-    steps: u32,
     keys_remaining: u32,
-}
-
-impl Node {
-    fn sum_of_each_robots_max_manhattan_distance(&self) -> u32 {
-        self.robot_positions.iter()
-            .map(|pos| self.find_max_manhattan_to_any_key_in_zone(pos))
-            .sum()
-    }
-
-    fn find_max_manhattan_to_any_key_in_zone(&self, robot_position: &Position) -> u32 {
-        let height = self.map.tiles.len();
-        let width = self.map.tiles[0].len();
-
-        let mut max = 0usize;
-
-        if robot_position.row < height / 2 {
-            if robot_position.col < width / 2 {
-                // top left
-                self.check_quadrant(robot_position, &mut max, 0, height / 2, 0, width / 2);
-            } else {
-                // top right
-                self.check_quadrant(robot_position, &mut max, 0, height / 2, width / 2, width);
-            }
-        } else if robot_position.col < width / 2 {
-            // bottom left
-            self.check_quadrant(robot_position, &mut max, height / 2, height, 0, width / 2);
-        } else {
-            // bottom right
-            self.check_quadrant(robot_position, &mut max, height / 2, height, width / 2, width);
-        }
-
-        max as u32
-    }
-
-    fn check_quadrant(
-        &self,
-        robot_position: &Position,
-        max: &mut usize,
-        row_start: usize,
-        row_end: usize,
-        col_start: usize,
-        col_end: usize,
-    ) {
-        for row in row_start..row_end {
-            for col in col_start..col_end {
-                let tile = self.map.tiles[row][col];
-                if let Tile::Key(label) = tile {
-                    if !self.keys_collected.contains(&label) {
-                        let width = usize_abs(robot_position.col, col);
-                        let height = usize_abs(robot_position.row, row);
-                        let manhattan = width + height;
-                        if manhattan > *max {
-                            *max = manhattan;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-fn usize_abs(a: usize, b: usize) -> usize {
-    if a < b {
-        b - a
-    } else {
-        a - b
-    }
 }
 
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
-        // let us = self.steps + self.keys_remaining;
-        // let them = other.steps + other.keys_remaining;
-        let us = self.steps + self.sum_of_each_robots_max_manhattan_distance();
-        let them = other.steps + other.sum_of_each_robots_max_manhattan_distance();
-        them.cmp(&us)
+        other.distance.cmp(&self.distance)
     }
 }
 
@@ -239,18 +36,217 @@ impl PartialOrd for Node {
     }
 }
 
-impl Hash for Node {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.robot_positions.hash(state);
-        self.keys_collected.hash(state);
-        self.keys_remaining.hash(state);
-    }
-}
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
         self.robot_positions == other.robot_positions && self.keys_collected == other.keys_collected
     }
+}
+
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.keys_collected.hash(state);
+        self.robot_positions.hash(state);
+    }
+}
+
+fn solve(input: &InitialState) -> u32 {
+    let graph = build_graph(input);
+
+    let start_node = Node {
+        distance: 0,
+        robot_positions: vec![input.start],
+        keys_collected: Rc::new(BTreeSet::new()),
+        keys_remaining: input.num_keys,
+    };
+
+    dijkstra(&graph, start_node)
+}
+
+fn solve2(input: &InitialState) -> u32 {
+    let start = input.start;
+    let mut map = input.map.clone();
+    map.tiles[start.row][start.col] = Tile::StoneWall;
+    map.tiles[start.row - 1][start.col] = Tile::StoneWall;
+    map.tiles[start.row + 1][start.col] = Tile::StoneWall;
+    map.tiles[start.row][start.col - 1] = Tile::StoneWall;
+    map.tiles[start.row][start.col + 1] = Tile::StoneWall;
+
+    let robot_positions = vec![
+        Position { row: start.row - 1, col: start.col - 1 },
+        Position { row: start.row + 1, col: start.col - 1 },
+        Position { row: start.row - 1, col: start.col + 1 },
+        Position { row: start.row + 1, col: start.col + 1 },
+    ];
+
+    robot_positions.iter()
+        .for_each(|p| {
+            map.tiles[p.row][p.col] = Tile::Start;
+        });
+
+    let input = InitialState {
+        num_keys: input.num_keys,
+        start,
+        map,
+    };
+
+    let graph = build_graph(&input);
+
+    let start_node = Node {
+        distance: 0,
+        robot_positions,
+        keys_collected: Rc::new(BTreeSet::new()),
+        keys_remaining: input.num_keys,
+    };
+
+    dijkstra(&graph, start_node)
+}
+
+fn dijkstra(graph: &Graph, start_node: Node) -> u32 {
+    let mut queue: BinaryHeap<Node> = BinaryHeap::new();
+    let mut seen: HashSet<Node> = HashSet::new();
+
+    queue.push(start_node);
+
+    while let Some(node) = queue.pop() {
+        if is_terminal(&node) {
+            return node.distance;
+        }
+
+        if seen.contains(&node) {
+            continue;
+        }
+
+        seen.insert(node.clone());
+
+        for robot in 0..node.robot_positions.len() {
+            let robot_position = &node.robot_positions[robot];
+            let edges = graph.get(robot_position).unwrap();
+            for (p, tile, distance) in edges.iter() {
+                match tile {
+                    Tile::Start => {
+                        let mut new_positions = node.robot_positions.clone();
+                        new_positions[robot] = *p;
+                        let new_node = Node {
+                            robot_positions: new_positions,
+                            distance: node.distance + distance,
+                            keys_remaining: node.keys_remaining,
+                            keys_collected: Rc::clone(&node.keys_collected),
+                        };
+                        queue.push(new_node);
+                    }
+                    Tile::Door(label) => {
+                        if node.keys_collected.contains(label) {
+                            let mut new_positions = node.robot_positions.clone();
+                            new_positions[robot] = *p;
+                            let new_node = Node {
+                                robot_positions: new_positions,
+                                distance: node.distance + distance,
+                                keys_remaining: node.keys_remaining,
+                                keys_collected: Rc::clone(&node.keys_collected),
+                            };
+                            queue.push(new_node);
+                        }
+                    }
+                    Tile::Key(label) => {
+                        if node.keys_collected.contains(label) {
+                            let mut new_positions = node.robot_positions.clone();
+                            new_positions[robot] = *p;
+                            let new_node = Node {
+                                robot_positions: new_positions,
+                                distance: node.distance + distance,
+                                keys_remaining: node.keys_remaining,
+                                keys_collected: Rc::clone(&node.keys_collected),
+                            };
+                            queue.push(new_node);
+                        } else {
+                            let mut new_positions = node.robot_positions.clone();
+                            new_positions[robot] = *p;
+                            let mut keys_collected: BTreeSet<char> = (*node.keys_collected).clone();
+                            keys_collected.insert(*label);
+                            let new_node = Node {
+                                robot_positions: new_positions,
+                                distance: node.distance + distance,
+                                keys_remaining: node.keys_remaining - 1,
+                                keys_collected: Rc::new(keys_collected),
+                            };
+                            queue.push(new_node);
+                        }
+                    }
+                    _ => unimplemented!("unexpected tile in simplified graph"),
+                }
+            }
+        }
+    }
+
+    unimplemented!("no solution possible")
+}
+
+type Graph = HashMap<Position, Vec<(Position, Tile, u32)>>;
+
+fn build_graph(input: &InitialState) -> Graph {
+    let map = &input.map.tiles;
+    let mut graph = HashMap::new();
+    let rows = map.len();
+    let cols = map[0].len();
+
+    for row in 0..rows {
+        for col in 0..cols {
+            let tile = map[row][col];
+            match tile {
+                Tile::OpenPassage => continue,
+                Tile::StoneWall => continue,
+                _ => {
+                    let position = Position { row, col };
+                    let edges = get_edges(input, &position);
+                    graph.insert(position, edges);
+                }
+            }
+        }
+    }
+
+    graph
+}
+
+fn get_edges(input: &InitialState, position: &Position) -> Vec<(Position, Tile, u32)> {
+    let mut queue: VecDeque<(Position, u32)> = VecDeque::new();
+
+    let mut seen: HashSet<Position> = HashSet::new();
+
+    position.around()
+        .into_iter()
+        .for_each(|p| queue.push_back((p, 1)));
+
+    seen.insert(*position);
+
+    let mut edges = vec![];
+
+    while let Some((position, distance)) = queue.pop_front() {
+        if seen.contains(&position) {
+            continue;
+        }
+        let Position { row, col } = position;
+        let tile = input.map.tiles[row][col];
+        match tile {
+            Tile::OpenPassage => {
+                position.around()
+                    .into_iter()
+                    .for_each(|p| queue.push_back((p, distance + 1)));
+            }
+            Tile::StoneWall => continue,
+            _ => {
+                edges.push((position, tile, distance));
+            }
+        }
+
+        seen.insert(position);
+    }
+
+    edges
+}
+
+fn is_terminal(node: &Node) -> bool {
+    node.keys_remaining == 0
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -289,14 +285,6 @@ struct Map {
 }
 
 impl Map {
-    fn get_at_position(&self, position: &Position) -> Option<Tile> {
-        if position.row >= self.tiles.len() || position.col >= self.tiles[0].len() {
-            None
-        } else {
-            Some(self.tiles[position.row][position.col])
-        }
-    }
-
     // fn display(&self, node: &Node) {
     //     let height = self.tiles.len();
     //     let width = self.tiles[0].len();
@@ -367,7 +355,7 @@ fn parse_input(input: &str) -> InitialState {
         tiles: map
     };
 
-    let (map, start) = find_start_position(&map);
+    let start = find_start_position(&map);
 
     let num_keys = map.tiles.iter()
         .flat_map(|a| a.iter())
@@ -387,27 +375,21 @@ fn parse_row(row: &str) -> Vec<Tile> {
         .collect()
 }
 
-fn find_start_position(input: &Map) -> (Map, Position) {
+fn find_start_position(input: &Map) -> Position {
     let map = &input.tiles;
-    let mut output: Vec<Vec<Tile>> = vec![];
 
-    let mut start: Option<Position> = None;
-
-    for (y, row) in map.iter().enumerate() {
-        let mut new_row = vec![];
-        for (x, col) in row.iter().enumerate() {
-            match col {
+    for (row, row_vec) in map.iter().enumerate() {
+        for (col, tile) in row_vec.iter().enumerate() {
+            match tile {
                 Tile::Start => {
-                    start = Some(Position { row: y, col: x });
-                    new_row.push(Tile::OpenPassage);
+                    return Position { row, col };
                 }
-                a => new_row.push(*a)
+                _ => continue,
             }
         }
-        output.push(new_row);
     }
 
-    (Map { tiles: output }, start.unwrap())
+    panic!("no start tile")
 }
 
 #[cfg(test)]
@@ -489,6 +471,16 @@ mod tests {
         let example_input = parse_input(example_input);
         let actual = solve2(&example_input);
         let expected = 72;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve2() {
+        let example_input = include_str!("input");
+        let example_input = parse_input(example_input);
+        let actual = solve2(&example_input);
+        let expected = 1514;
 
         assert_eq!(actual, expected)
     }
