@@ -125,39 +125,18 @@ fn dijkstra(graph: &Graph, start_node: Node) -> u32 {
             for (p, tile, distance) in edges.iter() {
                 match tile {
                     Tile::Start => {
-                        let mut new_positions = node.robot_positions.clone();
-                        new_positions[robot] = *p;
-                        let new_node = Node {
-                            robot_positions: new_positions,
-                            distance: node.distance + distance,
-                            keys_remaining: node.keys_remaining,
-                            keys_collected: Rc::clone(&node.keys_collected),
-                        };
+                        let new_node = move_robot(&node, robot, p, *distance);
                         queue.push(new_node);
                     }
                     Tile::Door(label) => {
                         if node.keys_collected.contains(label) {
-                            let mut new_positions = node.robot_positions.clone();
-                            new_positions[robot] = *p;
-                            let new_node = Node {
-                                robot_positions: new_positions,
-                                distance: node.distance + distance,
-                                keys_remaining: node.keys_remaining,
-                                keys_collected: Rc::clone(&node.keys_collected),
-                            };
+                            let new_node = move_robot(&node, robot, p, *distance);
                             queue.push(new_node);
                         }
                     }
                     Tile::Key(label) => {
                         if node.keys_collected.contains(label) {
-                            let mut new_positions = node.robot_positions.clone();
-                            new_positions[robot] = *p;
-                            let new_node = Node {
-                                robot_positions: new_positions,
-                                distance: node.distance + distance,
-                                keys_remaining: node.keys_remaining,
-                                keys_collected: Rc::clone(&node.keys_collected),
-                            };
+                            let new_node = move_robot(&node, robot, p, *distance);
                             queue.push(new_node);
                         } else {
                             let mut new_positions = node.robot_positions.clone();
@@ -182,17 +161,27 @@ fn dijkstra(graph: &Graph, start_node: Node) -> u32 {
     unimplemented!("no solution possible")
 }
 
+fn move_robot(parent: &Node, robot: usize, p: &Position, distance: u32) -> Node {
+    let mut new_positions = parent.robot_positions.clone();
+
+    new_positions[robot] = *p;
+
+    Node {
+        robot_positions: new_positions,
+        distance: parent.distance + distance,
+        keys_remaining: parent.keys_remaining,
+        keys_collected: Rc::clone(&parent.keys_collected),
+    }
+}
+
 type Graph = HashMap<Position, Vec<(Position, Tile, u32)>>;
 
 fn build_graph(input: &InitialState) -> Graph {
     let map = &input.map.tiles;
     let mut graph = HashMap::new();
-    let rows = map.len();
-    let cols = map[0].len();
 
-    for row in 0..rows {
-        for col in 0..cols {
-            let tile = map[row][col];
+    for (row, row_vec) in map.iter().enumerate() {
+        for (col, tile) in row_vec.iter().enumerate() {
             match tile {
                 Tile::OpenPassage => continue,
                 Tile::StoneWall => continue,
