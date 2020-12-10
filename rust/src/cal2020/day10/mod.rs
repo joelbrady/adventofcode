@@ -77,12 +77,10 @@ fn solve2(input: &[u32]) -> usize {
         if !removable[i] {
             for j in (i+1)..(input.len()) {
                 if !removable[j] {
-                    if j == i + 1 {
-                        i = j;
-                        break;
+                    if j != i + 1 {
+                        let slice = &input[i..j+1];
+                        ways *= combinations(slice).len();
                     }
-                    let slice = &input[i..j+1];
-                    ways *= combinations(slice).len();
                     i = j;
                     break;
                 }
