@@ -2,7 +2,7 @@ pub fn main() {
     let input = include_str!("input");
     let input = parse_input(input);
 
-    let part1 = solve(input.clone());
+    let part1 = solve(&input);
 
     println!("The solution to part 1 is {}", part1);
 
@@ -41,58 +41,69 @@ fn parse_input(input: &str) -> Vec<Vec<Tile>> {
 //
 // Floor (.) never changes; seats don't move, and nobody sits on the floor.
 
-fn solve(input: Vec<Vec<Tile>>) -> usize {
-    let mut a: Vec<Vec<Tile>> = input.clone();
-    let mut b: Vec<Vec<Tile>> = input;
+fn solve(input: &[Vec<Tile>]) -> usize {
+    generic_solution(input, 4, get_around_1)
+}
+
+fn generic_solution<F>(input: &[Vec<Tile>], limit: usize, adjacency_check: F) -> usize
+    where F: Fn(i32, i32, &[Vec<Tile>]) -> usize {
+    let a: Vec<Vec<Tile>> = input.to_vec();
+    let rows = a.len();
+    let cols = a[0].len();
+    let mut buffers = [a.clone(), a];
+
+    assert_eq!(buffers[0], buffers[1]);
+
+    let mut i = 0;
 
     loop {
-        for row in 0..a.len() {
-            for col in 0..(a[0].len()) {
-                let adjacent = get_around(row as i32, col as i32, &a);
-                let this = a[row][col];
+        let input_buffer = i % 2;
+        let output_buffer = (i + 1) % 2;
+        for row in 0..rows {
+            for col in 0..cols {
+                let adjacent = adjacency_check(row as i32, col as i32, &(buffers[input_buffer]));
+                let this = buffers[input_buffer][row][col];
                 match this {
                     Tile::EmptySeat => {
                         if adjacent == 0 {
-                            b[row][col] = Tile::OccupiedSeat;
+                            buffers[output_buffer][row][col] = Tile::OccupiedSeat;
+                            continue;
                         }
-                    },
+                    }
                     Tile::OccupiedSeat => {
-                        if adjacent >= 4 {
-                            b[row][col] = Tile::EmptySeat;
+                        if adjacent >= limit {
+                            buffers[output_buffer][row][col] = Tile::EmptySeat;
+                            continue;
                         }
-                    },
-                    _ => continue,
+                    }
+                    _ => {},
                 }
+                buffers[output_buffer][row][col] = buffers[input_buffer][row][col];
             }
         }
 
-        if a == b {
+        if buffers[input_buffer] == buffers[output_buffer] {
             break;
         }
-        a = b.clone();
+
+        i += 1;
     }
 
-    a.iter()
+    buffers[0].iter()
         .map(|row| row.iter().filter(|t| **t == Tile::OccupiedSeat).count())
         .sum()
 }
 
-fn get_around(row: i32, col: i32, m: &[Vec<Tile>]) -> usize {
+fn get_around_1(row: i32, col: i32, m: &[Vec<Tile>]) -> usize {
     let potentials = [(row - 1, col - 1), (row, col - 1), (row + 1, col - 1), (row + 1, col), (row + 1, col + 1), (row, col + 1), (row - 1, col + 1), (row - 1, col)];
     let max_row = (m.len() - 1) as i32;
     let max_col = (m[0].len() - 1) as i32;
 
-    let potentials: Vec<(i32, i32)> = potentials.iter()
-        .filter(|(row, col)| *row >= 0 && *row <= max_row && *col >= 0 && * col <= max_col)
-        .copied()
-        .collect();
-
-    let tiles = potentials.iter()
+    potentials.iter()
+        .filter(|(row, col)| *row >= 0 && *row <= max_row && *col >= 0 && *col <= max_col)
         .map(|(row, col)| m[(*row) as usize][(*col) as usize])
         .filter(|tile| *tile == Tile::OccupiedSeat)
-        .count();
-
-    tiles
+        .count()
 }
 
 #[cfg(test)]
@@ -105,7 +116,7 @@ mod test {
         let input = parse_input(input);
 
         let expected = 37;
-        let actual = solve(input);
+        let actual = solve(&input);
 
         assert_eq!(actual, expected)
     }
@@ -116,7 +127,7 @@ mod test {
         let input = parse_input(input);
 
         let expected = 2126;
-        let actual = solve(input);
+        let actual = solve(&input);
 
         assert_eq!(actual, expected)
     }
@@ -142,5 +153,4 @@ mod test {
     //
     //     assert_eq!(actual, expected)
     // }
-
 }
