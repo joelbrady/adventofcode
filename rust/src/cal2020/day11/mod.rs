@@ -6,8 +6,8 @@ pub fn main() {
 
     println!("The solution to part 1 is {}", part1);
 
-    // let part2 = solve2(&input);
-    // println!("The solution to part 2 is {}", part2);
+    let part2 = solve2(&input);
+    println!("The solution to part 2 is {}", part2);
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -34,6 +34,19 @@ fn parse_input(input: &str) -> Vec<Vec<Tile>> {
         .collect()
 }
 
+// fn display(buffer: &[Vec<Tile>]) {
+//     for row in buffer.iter() {
+//         for col in row.iter() {
+//             match *col {
+//                 Tile::EmptySeat => print!("L"),
+//                 Tile::Floor => print!("."),
+//                 Tile::OccupiedSeat => print!("#"),
+//             }
+//         }
+//         println!();
+//     }
+//     println!();
+// }
 
 // If a seat is empty (L) and there are no occupied seats adjacent to it, the seat becomes occupied.
 // If a seat is occupied (#) and four or more seats adjacent to it are also occupied, the seat becomes empty.
@@ -45,14 +58,16 @@ fn solve(input: &[Vec<Tile>]) -> usize {
     generic_solution(input, 4, get_around_1)
 }
 
+fn solve2(input: &[Vec<Tile>]) -> usize {
+    generic_solution(input, 5, get_around_inf)
+}
+
 fn generic_solution<F>(input: &[Vec<Tile>], limit: usize, adjacency_check: F) -> usize
     where F: Fn(i32, i32, &[Vec<Tile>]) -> usize {
     let a: Vec<Vec<Tile>> = input.to_vec();
     let rows = a.len();
     let cols = a[0].len();
     let mut buffers = [a.clone(), a];
-
-    assert_eq!(buffers[0], buffers[1]);
 
     let mut i = 0;
 
@@ -106,6 +121,33 @@ fn get_around_1(row: i32, col: i32, m: &[Vec<Tile>]) -> usize {
         .count()
 }
 
+fn get_around_inf(row: i32, col: i32, m: &[Vec<Tile>]) -> usize {
+    let directions = [(-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0)];
+    let max_row = (m.len() - 1) as i32;
+    let max_col = (m[0].len() - 1) as i32;
+
+    let mut occupied = 0;
+
+    for (row_delta, col_delta) in directions.iter() {
+        let mut row = row + row_delta;
+        let mut col = col + col_delta;
+        while row >= 0 && row <= max_row && col >= 0 && col <= max_col {
+            let tile = m[row as usize][col as usize];
+            if tile == Tile::OccupiedSeat {
+                occupied += 1;
+                break;
+            }
+            if tile == Tile::EmptySeat {
+                break;
+            }
+            row += row_delta;
+            col += col_delta;
+        }
+    }
+
+    occupied
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -131,26 +173,26 @@ mod test {
 
         assert_eq!(actual, expected)
     }
-    //
-    // #[test]
-    // fn test_example_part2() {
-    //     let input = include_str!("example");
-    //     let input = parse_input(input);
-    //
-    //     let expected = 0;
-    //     let actual = solve2(&input);
-    //
-    //     assert_eq!(actual, expected)
-    // }
-    //
-    // #[test]
-    // fn test_solution_part2() {
-    //     let input = include_str!("input");
-    //     let input = parse_input(input);
-    //
-    //     let expected: usize = 0;
-    //     let actual = solve2(&input);
-    //
-    //     assert_eq!(actual, expected)
-    // }
+
+    #[test]
+    fn test_example_part2() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let expected = 26;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 1914;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
 }
