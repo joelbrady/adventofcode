@@ -8,8 +8,7 @@ pub fn main() {
 
     println!("The solution to part 1 is {}", part1);
 
-    let part2 = solve2(&input);
-    println!("The solution to part 2 is {}", part2);
+    solve2(&input);
 }
 
 fn solve(program: &[i64]) -> i64 {
@@ -28,8 +27,40 @@ fn solve(program: &[i64]) -> i64 {
     sum
 }
 
-fn solve2(program: &[i64]) -> usize {
-    unimplemented!()
+fn solve2(program: &[i64]) {
+    let x_start = 1011;
+    let y_start = 555;
+    let dimension = 100;
+    let mut grid = vec![];
+
+    for row in y_start..(y_start + dimension) {
+        let mut row_vec = vec![];
+        for col in x_start..(x_start + dimension) {
+            let mut m = Machine::new_feedback_mode(program);
+            m.input(col as i64);
+            m.input(row as i64);
+            m.run();
+            let n = m.output() == 1;
+            row_vec.push(n);
+        }
+        grid.push(row_vec);
+    }
+
+    display(&grid);
+
+}
+
+fn display(grid: &[Vec<bool>]) {
+    for row in grid.iter() {
+        for tile in row.iter() {
+            match tile {
+                true => print!("#"),
+                false => print!("."),
+            }
+        }
+        println!();
+    }
+    println!();
 }
 
 #[cfg(test)]
@@ -52,9 +83,7 @@ mod test {
         let input = include_str!("input");
         let input = parse_program(input);
 
-        let expected = 0;
-        let actual = solve2(&input);
-
-        assert_eq!(actual, expected)
+        // solve visually
+        solve2(&input);
     }
 }
