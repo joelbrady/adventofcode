@@ -6,8 +6,8 @@ pub fn main() {
 
     println!("The solution to part 1 is {}", part1);
 
-    // let part2 = solve2(&input);
-    // println!("The solution to part 2 is {}", part2);
+    let part2 = solve2(&input);
+    println!("The solution to part 2 is {}", part2);
 }
 
 #[derive(Debug)]
@@ -132,9 +132,64 @@ fn add((ax, ay): &(i32, i32), (bx, by): &(i32, i32)) -> (i32, i32) {
     (ax + bx, ay + by)
 }
 
-// fn solve2(input: &[Instruction]) -> i32 {
-//     unimplemented!()
-// }
+fn solve2(input: &[Instruction]) -> i32 {
+    let mut waypoint = (10, 1);
+    let mut ship = (0, 0);
+
+    for i in input.iter() {
+        match i {
+            Instruction::Forward(n) => {
+                for _ in 0..*n {
+                    ship = add(&ship, &waypoint);
+                }
+            }
+            Instruction::North(n) => {
+                for _ in 0..*n {
+                    waypoint = add(&waypoint, &(0, 1));
+                }
+            }
+            Instruction::South(n) => {
+                for _ in 0..*n {
+                    waypoint = add(&waypoint, &(0, -1));
+                }
+            }
+            Instruction::East(n) => {
+                for _ in 0..*n {
+                    waypoint = add(&waypoint, &(1, 0));
+                }
+            }
+            Instruction::West(n) => {
+                for _ in 0..*n {
+                    waypoint = add(&waypoint, &(-1, 0));
+                }
+            }
+            Instruction::Left(n) => {
+                let mut n = *n;
+                while n > 0 {
+                    waypoint = rotate_left(&waypoint);
+                    n -= 90;
+                }
+            },
+            Instruction::Right(n) => {
+                let mut n = *n;
+                while n > 0 {
+                    waypoint = rotate_right(&waypoint);
+                    n -= 90;
+                }
+            }
+        }
+    }
+
+    abs(ship.0) + abs(ship.1)
+}
+
+fn rotate_left((x, y): &(i32, i32)) -> (i32, i32) {
+    (-*y, *x)
+}
+
+fn rotate_right((x, y): &(i32, i32)) -> (i32, i32) {
+    (*y, -*x)
+}
 
 #[cfg(test)]
 mod test {
@@ -158,6 +213,28 @@ mod test {
 
         let expected = 1687;
         let actual = solve(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example_part2() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let expected = 286;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 20873;
+        let actual = solve2(&input);
 
         assert_eq!(actual, expected)
     }
