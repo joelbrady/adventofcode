@@ -23,6 +23,7 @@ fn call_2020() {
     cal2020::day10::main();
     cal2020::day11::main();
     cal2020::day12::main();
+    cal2020::day13::main();
 }
 
 
