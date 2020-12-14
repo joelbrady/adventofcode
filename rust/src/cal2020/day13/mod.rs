@@ -56,55 +56,59 @@ struct Bus {
     multiple: u128,
 }
 
+#[derive(Debug)]
+struct ModEquation {
+    modulus: u128,
+    rhs: u128,
+}
+
+impl ModEquation {
+    fn is_congruent(&self, n: &u128) -> bool {
+        (n % self.modulus) == self.rhs
+    }
+}
+
 fn solve2(input: &Input) -> u128 {
-    let mut v: Vec<Bus> = input.buses.iter()
-        .map(|(index, bus_id)| Bus { offset: *index, bus_id: *bus_id as u128, multiple: *bus_id as u128 })
+    let v: Vec<Bus> = input.buses.iter()
+        .map(|(index, bus_id)| Bus { offset: *index, bus_id: *bus_id as u128, multiple: 0 })
         .collect();
 
-    let index_of_largest_bus_id = v.iter().enumerate().max_by_key(|(_, b)| b.bus_id).unwrap().0;
-    let largest_bus_id = v.iter().max_by_key(|b| b.bus_id).unwrap().bus_id;
+    let mut equations: Vec<ModEquation> = v.iter()
+        .map(|b| ModEquation { modulus: b.bus_id, rhs: calculate_rhs(b) })
+        .collect();
 
-    dbg!(index_of_largest_bus_id);
-    dbg!(largest_bus_id);
+    let mut equation = equations.remove(0);
 
-    let mut i = 0;
-
-    while !check(&v) {
-        v[index_of_largest_bus_id].multiple += largest_bus_id;
-        let target = v[index_of_largest_bus_id].multiple;
-        bring_everyone_close_to_largest_bus_multiple(&mut v, target);
-        // 3417
-        // if i >= 178 {
-        //     dbg!(&v);
-        //     panic!();
-        // }
-        // i += 1;
+    while !equations.is_empty() {
+        let b = equations.remove(0);
+        equation = solve_modular_equation(&equation, &b);
     }
 
-    v[0].multiple
+    equation.rhs
 }
 
-fn bring_everyone_close_to_largest_bus_multiple(v: &mut [Bus], largest_bus_id_multiple: u128) {
-    for b in v.iter_mut() {
-        if b.multiple != largest_bus_id_multiple {
-            let mut a = largest_bus_id_multiple - (largest_bus_id_multiple % b.bus_id) + b.bus_id;
-            while a > largest_bus_id_multiple {
-                a -= b.bus_id;
-            }
-            b.multiple = a;
-        }
+fn calculate_rhs(bus: &Bus) -> u128 {
+    let mut rhs: i128 = -(bus.offset as i128);
+
+    let modulus = bus.bus_id as i128;
+
+    while rhs < 0 {
+        rhs += modulus;
     }
+
+    rhs as u128
 }
 
-fn check(v: &[Bus]) -> bool {
-    let first = v[0].multiple;
-    for b in v.iter() {
-        if b.multiple != (first + (b.offset as u128)) {
-            return false;
-        }
+fn solve_modular_equation(a: &ModEquation, b: &ModEquation) -> ModEquation {
+    let modulus = a.modulus * b.modulus;
+
+    let mut n = a.rhs;
+
+    while !b.is_congruent(&n) {
+        n += a.modulus;
     }
 
-    true
+    ModEquation { modulus, rhs: n }
 }
 
 #[cfg(test)]
@@ -131,39 +135,6 @@ mod test {
         let actual = solve(&input);
 
         assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_check_example() {
-        let v = vec![
-            Bus {
-                bus_id: 7,
-                multiple: 1068781,
-                offset: 0,
-            },
-            Bus {
-                bus_id: 13,
-                multiple: 1068782,
-                offset: 1,
-            },
-            Bus {
-                bus_id: 59,
-                multiple: 1068785,
-                offset: 4,
-            },
-            Bus {
-                bus_id: 31,
-                multiple: 1068787,
-                offset: 6,
-            },
-            Bus {
-                bus_id: 19,
-                multiple: 1068788,
-                offset: 7,
-            },
-        ];
-
-        assert!(check(&v))
     }
 
     #[test]
@@ -198,15 +169,57 @@ mod test {
 
         assert_eq!(actual, expected)
     }
-    //
-    // #[test]
-    // fn test_solution_part2() {
-    //     let input = include_str!("input");
-    //     let input = parse_input(input);
-    //
-    //     let expected = 20873;
-    //     let actual = solve2(&input);
-    //
-    //     assert_eq!(actual, expected)
-    // }
+
+    #[test]
+    fn test_example_small3() {
+        let input = "1\n67,x,7,59,61";
+        let input = parse_input(input);
+
+        let expected = 779210;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example_small4() {
+        let input = "1\n67,7,x,59,61";
+        let input = parse_input(input);
+
+        let expected = 1261476;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example_small5() {
+        let input = "1\n1789,37,47,1889";
+        let input = parse_input(input);
+
+        let expected = 1202161486;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 1118684865113056;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_modular_equation1() {
+        let a = ModEquation { rhs: 2, modulus: 5 };
+        let b = ModEquation { rhs: 3, modulus: 7 };
+
+        let actual = solve_modular_equation(&a, &b);
+        dbg!(&actual);
+    }
 }
