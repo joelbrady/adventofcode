@@ -121,17 +121,8 @@ fn parse_nearby_tickets(input: &str) -> Vec<Ticket> {
 }
 
 fn solve(input: &Input) -> i32 {
-    let invalid_tickets: Vec<&Ticket> = input.nearby_tickets.iter()
-        .filter(|t| t.values.iter().any(|v| !validate_value_part1(*v, &input.rules)))
-        .collect();
-
-    let invalid_values: Vec<i32> = invalid_tickets.iter()
-        .flat_map(|t| t.values.iter()
-            .filter(|v| !validate_value_part1(**v, &input.rules)))
-        .copied()
-        .collect();
-
-    invalid_values.iter()
+    input.nearby_tickets.iter()
+        .flat_map(|t| t.values.iter().filter(|v| !validate_value_part1(**v, &input.rules)))
         .sum()
 }
 
