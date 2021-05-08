@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use nom::bytes::complete::{is_not, tag};
 use nom::character::complete::newline;
 use nom::IResult;
@@ -14,31 +16,37 @@ pub fn main() {
     let part1 = solve(&input);
 
     println!("The solution to part 1 is {}", part1);
-    //
-    // let part2 = solve2(&input);
-    // println!("The solution to part 2 is {}", part2);
+
+    let part2 = solve2(&input);
+    println!("The solution to part 2 is {}", part2);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Input {
     rules: Vec<Rule>,
     my_ticket: Ticket,
     nearby_tickets: Vec<Ticket>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 struct Rule {
     label: String,
     ranges: Vec<Range>,
 }
 
-#[derive(Debug)]
+impl Rule {
+    fn apply(&self, v: i32) -> bool {
+        self.ranges.iter().any(|r| v >= r.start && v <= r.end)
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 struct Range {
     start: i32,
     end: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Ticket {
     values: Vec<i32>,
 }
@@ -128,8 +136,80 @@ fn solve(input: &Input) -> i32 {
 
 fn validate_value_part1(value: i32, rules: &[Rule]) -> bool {
     rules.iter()
-        .flat_map(|r| r.ranges.iter())
-        .any(|range| value >= range.start && value <= range.end)
+        .any(|r| r.apply(value))
+}
+
+fn solve2(input: &Input) -> i64 {
+    let labels = compute_labels(input);
+
+    let departure_fields: HashSet<usize> = labels.iter().enumerate()
+        .filter(|(_, label)| label.starts_with("departure"))
+        .map(|(i, _)| i)
+        .collect();
+
+    input.my_ticket.values.iter()
+        .enumerate()
+        .filter(|(i, _)| departure_fields.contains(i))
+        .map(|(_, n)| *n as i64)
+        .product()
+}
+
+fn compute_labels(input: &Input) -> Vec<String> {
+    let mut p: Vec<HashSet<Rule>> = std::iter::repeat(input.rules.clone())
+        .take(input.rules.len())
+        .map(|v| v.into_iter().collect())
+        .collect();
+
+    let tickets: Vec<Ticket> = std::iter::once(&input.my_ticket)
+        .chain(input.nearby_tickets.iter())
+        .filter(|t| validate_ticket(t, &input.rules))
+        .cloned()
+        .collect();
+
+    // remove rules in a position where a value doesn't fit
+    for (i, ps) in p.iter_mut().enumerate() {
+        for t in tickets.iter() {
+            let v = t.values[i];
+            let pss = ps.clone();
+            for rule in pss {
+                if !rule.apply(v) {
+                    ps.remove(&rule);
+                }
+            }
+        }
+    }
+
+    // remove rules in a position where they are the only possibility in another position
+    let mut removed = true;
+    while removed {
+        removed = false;
+        for i in 0..(p.len()) {
+            for j in 0..(p.len()) {
+                if i != j {
+                    let s = p[i].clone();
+                    let t = &mut p[j];
+                    if s.len() == 1 && t.len() > 1 {
+                        s.iter().for_each(|r| {
+                            removed = true;
+                            t.remove(r);
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    p.iter()
+        .map(|v| {
+            debug_assert_eq!(v.len(), 1);
+            v.iter().next().unwrap().label.clone()
+        })
+        .collect()
+}
+
+fn validate_ticket(ticket: &Ticket, rules: &[Rule]) -> bool {
+    ticket.values.iter()
+        .all(|value| validate_value_part1(*value, rules))
 }
 
 #[cfg(test)]
@@ -154,6 +234,28 @@ mod test {
 
         let expected = 25972;
         let actual = solve(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_compute_labels() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let expected = vec!["row", "class", "seat"];
+        let actual = compute_labels(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 622670335901;
+        let actual = solve2(&input);
 
         assert_eq!(actual, expected)
     }
