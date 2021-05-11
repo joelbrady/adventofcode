@@ -15,11 +15,14 @@ pub fn main() {
 
 #[derive(Debug, Clone)]
 struct Input {
-    initial_state: State,
+    initial_state: HashSet<(i32, i32)>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct State(HashSet<(i32, i32, i32)>);
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct State2(HashSet<(i32, i32, i32, i32)>);
 
 impl State {
     #[allow(dead_code)]
@@ -53,41 +56,35 @@ impl State {
 }
 
 fn parse_input(input: &str) -> Input {
-    let initial_state = parse_input_with_z(input, 0);
-
-    Input { initial_state }
-}
-
-fn parse_input_with_z(input: &str, z: i32) -> State {
     let grid: Vec<Vec<char>> = input.lines()
         .map(|line| line.chars().collect())
         .collect();
 
-    let mut set = HashSet::new();
+    let mut initial_state = HashSet::new();
 
     for y in 0..(grid.len()) {
         for x in 0..(grid[0].len()) {
             if grid[y][x] == '#' {
-                let p = (x as i32, y as i32, z);
-                set.insert(p);
+                let p = (x as i32, y as i32);
+                initial_state.insert(p);
             }
         }
     }
 
-    State(set)
+    Input { initial_state }
 }
 
 fn cycle(state: &State) -> State {
-    // find all 9 cubes around every currently active cube, then union the set
+    // find all cubes around every currently active cube, then union the set
     // these are the only ones that could possibly be active in the next cycle
     let neighbours: HashSet<(i32, i32, i32)> = state.0.iter()
-        .flat_map(|t| around(t))
+        .flat_map(|t| around3(t))
         .collect();
 
     let mut new = HashSet::with_capacity(neighbours.len() * 2);
 
     for n in neighbours {
-        let ns = around(&n).filter(|position| state.0.contains(position)).count();
+        let ns = around3(&n).filter(|position| state.0.contains(position)).count();
         if state.0.contains(&n) {
             if (2..=3).contains(&ns) {
                 new.insert(n);
@@ -100,7 +97,30 @@ fn cycle(state: &State) -> State {
     State(new)
 }
 
-fn around(t: &(i32, i32, i32)) -> impl Iterator<Item=(i32, i32, i32)> {
+fn cycle2(state: &State2) -> State2 {
+    // find all cubes around every currently active cube, then union the set
+    // these are the only ones that could possibly be active in the next cycle
+    let neighbours: HashSet<(i32, i32, i32, i32)> = state.0.iter()
+        .flat_map(|t| around4(t))
+        .collect();
+
+    let mut new = HashSet::with_capacity(neighbours.len() * 2);
+
+    for n in neighbours {
+        let ns = around4(&n).filter(|position| state.0.contains(position)).count();
+        if state.0.contains(&n) {
+            if (2..=3).contains(&ns) {
+                new.insert(n);
+            }
+        } else if ns == 3 {
+            new.insert(n);
+        }
+    }
+
+    State2(new)
+}
+
+fn around3(t: &(i32, i32, i32)) -> impl Iterator<Item=(i32, i32, i32)> {
     let mut items = Vec::with_capacity(3 * 3 * 3);
 
     for dx in -1..2 {
@@ -110,26 +130,61 @@ fn around(t: &(i32, i32, i32)) -> impl Iterator<Item=(i32, i32, i32)> {
                     continue
                 }
                 let d = (dx, dy, dz);
-                let a = add(t, &d);
+                let a = add3(t, &d);
                 items.push(a);
             }
         }
     }
 
-    debug_assert_eq!(items.len(), 26);
+    debug_assert_eq!(items.len(), (3 * 3 * 3) - 1);
 
     items.into_iter()
 }
 
-fn add(a: &(i32, i32, i32), b: &(i32, i32, i32)) -> (i32, i32, i32) {
+fn around4(t: &(i32, i32, i32, i32)) -> impl Iterator<Item=(i32, i32, i32, i32)> {
+    let mut items = Vec::with_capacity(3 * 3 * 3);
+
+    for dw in -1..2 {
+        for dx in -1..2 {
+            for dy in -1..2 {
+                for dz in -1..2 {
+                    if dw == 0 && dx == 0 && dy == 0 && dz == 0 {
+                        continue
+                    }
+                    let d = (dx, dy, dz, dw);
+                    let a = add4(t, &d);
+                    items.push(a);
+                }
+            }
+        }
+    }
+
+    debug_assert_eq!(items.len(), (3 * 3 * 3 * 3) - 1);
+
+    items.into_iter()
+}
+
+fn add3(a: &(i32, i32, i32), b: &(i32, i32, i32)) -> (i32, i32, i32) {
     let (xa, ya, za) = *a;
     let (xb, yb, zb) = *b;
 
     (xa + xb, ya + yb, za + zb)
 }
 
+fn add4(a: &(i32, i32, i32, i32), b: &(i32, i32, i32, i32)) -> (i32, i32, i32, i32) {
+    let (xa, ya, za, wa) = *a;
+    let (xb, yb, zb, wb) = *b;
+
+    (xa + xb, ya + yb, za + zb, wa + wb)
+}
+
 fn solve(input: &Input) -> usize {
-    let mut state = input.initial_state.clone();
+    let three_dimensioned = input.initial_state.iter()
+        .map(|(x, y)| (*x, *y, 0))
+        .collect();
+
+    let mut state = State(three_dimensioned);
+
     for _ in 0..6 {
         state = cycle(&state);
     }
@@ -137,8 +192,18 @@ fn solve(input: &Input) -> usize {
     state.0.len()
 }
 
-fn solve2(_input: &Input) -> usize {
-    todo!()
+fn solve2(input: &Input) -> usize {
+    let four_dimensioned = input.initial_state.iter()
+        .map(|(x, y)| (*x, *y, 0, 0))
+        .collect();
+
+    let mut state = State2(four_dimensioned);
+
+    for _ in 0..6 {
+        state = cycle2(&state);
+    }
+
+    state.0.len()
 }
 
 #[cfg(test)]
@@ -156,13 +221,13 @@ mod test {
         // ..#
         // ###
 
-        expected.insert((1, 0, 0));
-        expected.insert((2, 1, 0));
-        expected.insert((0, 2, 0));
-        expected.insert((1, 2, 0));
-        expected.insert((2, 2, 0));
+        expected.insert((1, 0));
+        expected.insert((2, 1));
+        expected.insert((0, 2));
+        expected.insert((1, 2));
+        expected.insert((2, 2));
 
-        assert_eq!(actual.initial_state, State(expected))
+        assert_eq!(actual.initial_state, expected)
     }
 
     #[test]
@@ -188,11 +253,22 @@ mod test {
     }
 
     #[test]
+    fn test_example2() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let expected = 848;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
     fn test_solution2() {
         let input = include_str!("input");
         let input = parse_input(input);
 
-        let expected = 0;
+        let expected = 2448;
         let actual = solve2(&input);
 
         assert_eq!(actual, expected)
