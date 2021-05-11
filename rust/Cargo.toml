@@ -1,7 +1,7 @@
 [package]
 name = "adventofcode"
 version = "0.1.0"
-authors = ["Joel Brady <jbrady@atlassian.com>"]
+authors = ["Joel Brady <joel.brady1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
