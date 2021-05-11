@@ -2,7 +2,7 @@ use nom::bytes::complete::{tag, take, take_while};
 use nom::character::complete::line_ending;
 use nom::character::is_alphabetic;
 use nom::IResult;
-use nom::multi::separated_list;
+use nom::multi::separated_list1;
 use nom::sequence::separated_pair;
 
 use crate::parse::parse_i32;
@@ -19,7 +19,7 @@ pub fn main() {
 }
 
 fn parse_input(input: &str) -> Vec<PasswordCheck> {
-    let (_, checks) = separated_list(line_ending, parse_password_check)(input).unwrap();
+    let (_, checks) = separated_list1(line_ending, parse_password_check)(input).unwrap();
     checks
 }
 

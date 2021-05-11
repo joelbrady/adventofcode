@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use nom::bytes::complete::{is_not, tag};
 use nom::character::complete::newline;
 use nom::IResult;
-use nom::multi::separated_list;
+use nom::multi::separated_list1;
 use nom::sequence::separated_pair;
 
 use crate::parse::parse_i32;
@@ -69,7 +69,7 @@ fn parse_input(input: &str) -> Input {
 }
 
 fn parse_rules(input: &str) -> IResult<&str, Vec<Rule>> {
-    separated_list(newline, parse_rule)(input)
+    separated_list1(newline, parse_rule)(input)
 }
 
 fn parse_rule(input: &str) -> IResult<&str, Rule> {
@@ -90,7 +90,7 @@ fn parse_label(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_ranges(input: &str) -> IResult<&str, Vec<Range>> {
-    separated_list(tag(" or "), parse_range)(input)
+    separated_list1(tag(" or "), parse_range)(input)
 }
 
 fn parse_range(input: &str) -> IResult<&str, Range> {

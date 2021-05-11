@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, line_ending, space0};
 use nom::IResult;
-use nom::multi::separated_nonempty_list;
+use nom::multi::separated_list1;
 use nom::sequence::{preceded, separated_pair};
 
 use crate::parse::parse_i32;
@@ -66,7 +66,7 @@ struct Formula<'a> {
 }
 
 fn parse_formulas(input: &str) -> IResult<&str, Vec<Formula>> {
-    separated_nonempty_list(line_ending, parse_formula)(input)
+    separated_list1(line_ending, parse_formula)(input)
 }
 
 fn parse_formula<'a>(input: &'a str) -> IResult<&'a str, Formula> {
@@ -83,7 +83,7 @@ fn parse_formula<'a>(input: &'a str) -> IResult<&'a str, Formula> {
 
 fn parse_formula_input<'a>(input: &'a str) -> IResult<&str, Vec<(&'a str, u64)>> {
     let separator = preceded(nom::character::complete::char(','), space0);
-    let (input, inputs) = separated_nonempty_list(separator, parse_formula_pair)(input)?;
+    let (input, inputs) = separated_list1(separator, parse_formula_pair)(input)?;
 
     Ok((input, inputs))
 }

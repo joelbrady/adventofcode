@@ -6,7 +6,7 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::line_ending;
 use nom::combinator::map;
-use nom::multi::separated_list;
+use nom::multi::separated_list1;
 use nom::sequence::{separated_pair, terminated, tuple};
 
 use crate::parse::parse_i32;
@@ -51,7 +51,7 @@ struct Rule<'a> {
 }
 
 fn parse_input(input: &str) -> Vec<Rule> {
-    let (_, rules) = separated_list(line_ending, parse_rule)(input).unwrap();
+    let (_, rules) = separated_list1(line_ending, parse_rule)(input).unwrap();
 
     rules
 }
@@ -103,7 +103,7 @@ fn get_phrase_ending_in(delimiter: &'static str) -> impl Fn(&str) -> IResult<&st
 fn parse_contents(input: &str) -> IResult<&str, HashMap<&str, u32>> {
     let empty_case = map(tag("no other bags"), |_| HashMap::new());
     let otherwise = map(
-        separated_list(tag(", "), parse_content_pair),
+        separated_list1(tag(", "), parse_content_pair),
         |pairs| pairs.into_iter().collect(),
     );
 

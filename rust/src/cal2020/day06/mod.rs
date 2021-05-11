@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use nom::bytes::complete::is_not;
 use nom::character::complete::{line_ending, multispace1};
 use nom::IResult;
-use nom::multi::{many1, separated_list};
+use nom::multi::{many1, separated_list1};
 
 pub fn main() {
     let input = include_str!("input");
@@ -56,13 +56,13 @@ struct Form {
 }
 
 fn parse_input(input: &str) -> Vec<Group> {
-    let (_, groups) = separated_list(multispace1, parse_group)(input).unwrap();
+    let (_, groups) = separated_list1(multispace1, parse_group)(input).unwrap();
 
     groups
 }
 
 fn parse_group(input: &str) -> IResult<&str, Group> {
-    let (input, forms) = separated_list(line_ending, parse_form)(input)?;
+    let (input, forms) = separated_list1(line_ending, parse_form)(input)?;
 
     Ok((input, Group { forms }))
 }

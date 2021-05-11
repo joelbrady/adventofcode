@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use nom::bytes::complete::is_not;
 use nom::character::complete::{line_ending, space1};
 use nom::IResult;
-use nom::multi::separated_list;
+use nom::multi::separated_list1;
 use nom::sequence::separated_pair;
 
 pub fn main() {
@@ -25,7 +25,7 @@ enum Instruction {
 }
 
 fn parse_input(input: &str) -> Vec<Instruction> {
-    let (_, instructions) = separated_list(line_ending, parse_instruction)(input).unwrap();
+    let (_, instructions) = separated_list1(line_ending, parse_instruction)(input).unwrap();
 
     instructions
 }

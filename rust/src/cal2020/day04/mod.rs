@@ -5,7 +5,7 @@ use nom::bytes::complete::{is_not, tag, take_while};
 use nom::character::complete::{line_ending, multispace1, one_of};
 use nom::character::is_hex_digit;
 use nom::IResult;
-use nom::multi::{count, separated_list};
+use nom::multi::{count, separated_list1};
 use nom::sequence::{preceded, separated_pair};
 
 pub fn main() {
@@ -158,13 +158,13 @@ fn solve2(input: &[HashMap<&str, &str>]) -> usize {
 }
 
 fn parse_input(input: &str) -> Vec<HashMap<&str, &str>> {
-    let (_, passports) = separated_list(multispace1, parse_passport)(input).unwrap();
+    let (_, passports) = separated_list1(multispace1, parse_passport)(input).unwrap();
 
     passports
 }
 
 fn parse_passport(input: &str) -> IResult<&str, HashMap<&str, &str>> {
-    let (input, pairs) = separated_list(alt((tag(" "), line_ending)), parse_pair)(input)?;
+    let (input, pairs) = separated_list1(alt((tag(" "), line_ending)), parse_pair)(input)?;
 
     Ok((input, pairs.iter().copied().collect()))
 }

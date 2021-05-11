@@ -5,5 +5,5 @@ authors = ["Joel Brady <jbrady@atlassian.com>"]
 edition = "2018"
 
 [dependencies]
-nom = "5.0.1"
+nom = "6.1.2"
 num-integer = "0.1.41"
