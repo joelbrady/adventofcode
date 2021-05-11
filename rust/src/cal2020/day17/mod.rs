@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::ops::Range;
 
 pub fn main() {
     let input = include_str!("input");
@@ -23,10 +22,33 @@ struct Input {
 struct State(HashSet<(i32, i32, i32)>);
 
 impl State {
+    #[allow(dead_code)]
     fn union(&self, other: &State) -> State {
         let a = self.0.union(&other.0);
 
         State(a.cloned().collect())
+    }
+
+    #[allow(dead_code)]
+    fn display(&self, z: i32) {
+        let (min_x, _, _) = self.0.iter().min_by_key(|(x, _, _)| *x).unwrap();
+        let (max_x, _, _) = self.0.iter().max_by_key(|(x, _, _)| *x).unwrap();
+        let (_, min_y, _) = self.0.iter().min_by_key(|(_, y, _)| *y).unwrap();
+        let (_, max_y, _) = self.0.iter().max_by_key(|(_, y, _)| *y).unwrap();
+
+        dbg!(&min_x, &max_x, &min_y, &max_y, z);
+
+        for y in *min_y..=*max_y {
+            for x in *min_x..=*max_x {
+                if self.0.contains(&(x, y, z)) {
+                    print!("#")
+                } else {
+                    print!(".")
+                }
+            }
+            println!();
+        }
+        println!();
     }
 }
 
@@ -56,7 +78,6 @@ fn parse_input_with_z(input: &str, z: i32) -> State {
 }
 
 fn cycle(state: &State) -> State {
-    dbg!(state);
     // find all 9 cubes around every currently active cube, then union the set
     // these are the only ones that could possibly be active in the next cycle
     let neighbours: HashSet<(i32, i32, i32)> = state.0.iter()
@@ -67,7 +88,6 @@ fn cycle(state: &State) -> State {
 
     for n in neighbours {
         let ns = around(&n).filter(|position| state.0.contains(position)).count();
-        dbg!(&n, &ns);
         if state.0.contains(&n) {
             if (2..=3).contains(&ns) {
                 new.insert(n);
@@ -81,13 +101,22 @@ fn cycle(state: &State) -> State {
 }
 
 fn around(t: &(i32, i32, i32)) -> impl Iterator<Item=(i32, i32, i32)> {
-
     let mut items = Vec::with_capacity(3 * 3 * 3);
 
-    for d in g() {
-        let a = add(t, &d);
-        items.push(a);
+    for dx in -1..2 {
+        for dy in -1..2 {
+            for dz in -1..2 {
+                if dx == 0 && dy == 0 && dz == 0 {
+                    continue
+                }
+                let d = (dx, dy, dz);
+                let a = add(t, &d);
+                items.push(a);
+            }
+        }
     }
+
+    debug_assert_eq!(items.len(), 26);
 
     items.into_iter()
 }
@@ -99,16 +128,13 @@ fn add(a: &(i32, i32, i32), b: &(i32, i32, i32)) -> (i32, i32, i32) {
     (xa + xb, ya + yb, za + zb)
 }
 
-fn g() -> impl Iterator<Item=(i32, i32, i32)> {
-    f().zip(f()).zip(f()).map(|((x, y), z)| (x, y, z))
-}
+fn solve(input: &Input) -> usize {
+    let mut state = input.initial_state.clone();
+    for _ in 0..6 {
+        state = cycle(&state);
+    }
 
-fn f() -> Range<i32> {
-    -1..2
-}
-
-fn solve(_input: &Input) -> usize {
-    todo!()
+    state.0.len()
 }
 
 fn solve2(_input: &Input) -> usize {
@@ -140,50 +166,11 @@ mod test {
     }
 
     #[test]
-    fn test_example_first_cycle() {
-        //Before any cycles:
-        //
-        // z=0
-        // .#.
-        // ..#
-        // ###
-
-        let start = parse_input_with_z(".#.\n..#\n###", 0);
-
-        // After 1 cycle:
-        //
-        // z=-1
-        // #..
-        // ..#
-        // .#.
-        //
-        // z=0
-        // #.#
-        // .##
-        // .#.
-        //
-        // z=1
-        // #..
-        // ..#
-        // .#.
-
-        let expected_z_minus_1 = parse_input_with_z("#..\n..#\n.#.", -1);
-        let expected_z_0 = parse_input_with_z("#.#\n.##\n.#.", 0);
-        let expected_z_plus_1 = parse_input_with_z("#..\n..#\n.#.", 1);
-
-        let expected_first_cycle = expected_z_minus_1.union(&expected_z_0).union(&expected_z_plus_1);
-
-        let first_cycle = cycle(&start);
-
-        assert_eq!(first_cycle, expected_first_cycle)
-    }
-
-    #[test]
     fn test_example() {
         let input = include_str!("example");
         let input = parse_input(input);
 
-        let expected = 71;
+        let expected = 112;
         let actual = solve(&input);
 
         assert_eq!(actual, expected)
@@ -194,7 +181,7 @@ mod test {
         let input = include_str!("input");
         let input = parse_input(input);
 
-        let expected = 25972;
+        let expected = 237;
         let actual = solve(&input);
 
         assert_eq!(actual, expected)
@@ -205,7 +192,7 @@ mod test {
         let input = include_str!("input");
         let input = parse_input(input);
 
-        let expected = 622670335901;
+        let expected = 0;
         let actual = solve2(&input);
 
         assert_eq!(actual, expected)
