@@ -1,9 +1,9 @@
-use nom::character::complete::{char, digit1, multispace0};
+use nom::character::complete::{char, digit1, space0};
 use nom::combinator::opt;
 use nom::IResult;
 
 pub fn parse_i32(input: &str) -> IResult<&str, i32> {
-    let (input, _) = multispace0(input)?;
+    let (input, _) = space0(input)?;
     let (input, sign) = opt(char('-'))(input)?;
     let (input, digits) = digit1(input)?;
     let n: i32 = digits.parse().unwrap();

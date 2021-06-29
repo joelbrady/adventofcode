@@ -1,7 +1,7 @@
 use nom::{IResult, Parser};
 use nom::bytes::complete::tag;
-use nom::character::complete::multispace0;
-use nom::multi::many1;
+use nom::character::complete::{multispace1, space0};
+use nom::multi::{many1, separated_list0};
 use nom::sequence::preceded;
 
 use crate::parse::parse_i32;
@@ -21,22 +21,22 @@ pub fn main() {
 
 #[derive(Debug, Eq, PartialEq)]
 struct Input {
-    expression: Vec<Term>,
+    expressions: Vec<Vec<Term>>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 enum Term {
-    Number(i32),
+    Number(i64),
     ParenExp(Vec<Term>),
     Add,
     Multiply,
 }
 
 fn parse_input(input: &str) -> Input {
-    let (_, expression) = parse_expression(input).unwrap();
+    let (_, expressions) = separated_list0(multispace1, parse_expression)(input).unwrap();
 
     Input {
-        expression
+        expressions
     }
 }
 
@@ -58,12 +58,13 @@ fn parse_term(input: &str) -> IResult<&str, Term> {
         .or(parse_add)
         .or(parse_multiply);
 
-    preceded(multispace0, p)
+    preceded(space0, p)
         .parse(input)
 }
 
 fn parse_number(input: &str) -> IResult<&str, Term> {
     parse_i32
+        .map(|n| n as i64)
         .map(Term::Number)
         .parse(input)
 }
@@ -80,19 +81,62 @@ fn parse_multiply(input: &str) -> IResult<&str, Term> {
         .parse(input)
 }
 
-fn solve(input: &Input) -> i32 {
-    todo!()
+fn solve(input: &Input) -> i64 {
+    input.expressions.iter()
+        .map(|expression| evaluate(expression))
+        .sum()
 }
 
-fn solve2(input: &Input) -> i32 {
+fn evaluate(expression: &[Term]) -> i64 {
+    let mut stack = Vec::new();
+
+    for term in expression {
+        match term {
+            Term::ParenExp(e) => stack.push(Term::Number(evaluate(e))),
+            _ => stack.push(term.clone())
+        }
+
+        if stack.len() == 3 {
+            let b = stack.pop().unwrap();
+            let op = stack.pop().unwrap();
+            let a = stack.pop().unwrap();
+            if let Term::Number(a) = a {
+                if let Term::Number(b) = b {
+                    let op = match op {
+                        Term::Add => |(a, b)| a + b,
+                        Term::Multiply => |(a, b)| a * b,
+                        _ => panic!()
+                    };
+
+                    let n = op((a, b));
+                    stack.push(Term::Number(n));
+                }
+            } else {
+                panic!("3 terms that aren't an expression")
+            }
+
+        }
+    }
+
+    if stack.len() != 1 {
+        panic!()
+    }
+
+    if let Term::Number(n) = &stack[0] {
+        *n
+    } else {
+        panic!()
+    }
+}
+
+fn solve2(_: &Input) -> i32 {
     todo!()
 }
 
 #[cfg(test)]
 mod test {
-    use crate::cal2020::day18::Term::{Add, Multiply, Number, ParenExp};
-
     use super::*;
+    use super::Term::{Add, Multiply, Number, ParenExp};
 
     #[test]
 
@@ -133,7 +177,23 @@ mod test {
         let input = "123";
 
         let expected = Input {
-            expression: vec![Number(123)]
+            expressions: vec![vec![Number(123)]]
+        };
+
+        let actual = parse_input(input);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_parse_two_expressions() {
+        let input = "1 + 2\n3 + 4";
+
+        let expected = Input {
+            expressions: vec![
+                vec![Number(1), Add, Number(2)],
+                vec![Number(3), Add, Number(4)]
+            ]
         };
 
         let actual = parse_input(input);
@@ -146,7 +206,7 @@ mod test {
         let input = "((1 + (2 * 3) + (4 + 5)))";
 
         let expected = Input {
-            expression: vec![ParenExp(vec![ParenExp(vec![Number(1), Add, ParenExp(vec![Number(2), Multiply, Number(3)]), Add, ParenExp(vec![Number(4), Add, Number(5)])])])]
+            expressions: vec![vec![ParenExp(vec![ParenExp(vec![Number(1), Add, ParenExp(vec![Number(2), Multiply, Number(3)]), Add, ParenExp(vec![Number(4), Add, Number(5)])])])]]
         };
 
         let actual = parse_input(input);
@@ -162,7 +222,7 @@ mod test {
         let actual = parse_input(input);
 
         let expected = Input {
-            expression: vec![Number(1), Add, Number(2), Multiply, Number(3), Add, Number(4), Multiply, Number(5), Add, Number(6)]
+            expressions: vec![vec![Number(1), Add, Number(2), Multiply, Number(3), Add, Number(4), Multiply, Number(5), Add, Number(6)]]
         };
 
         assert_eq!(actual, expected)
@@ -228,7 +288,7 @@ mod test {
         let input = include_str!("input");
         let input = parse_input(input);
 
-        let expected = 0;
+        let expected = 1408133923393;
         let actual = solve(&input);
 
         assert_eq!(actual, expected)
