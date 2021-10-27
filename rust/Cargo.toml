@@ -2,7 +2,7 @@
 name = "adventofcode"
 version = "0.1.0"
 authors = ["Joel Brady <joel.brady1@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 nom = "6.1.2"
