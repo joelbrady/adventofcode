@@ -88,7 +88,6 @@ fn solve(input: &Input) -> i64 {
 }
 
 fn evaluate(expression: &[Term]) -> i64 {
-    println!("solving {:?}", expression);
     let mut stack = Vec::new();
 
     for term in expression {
