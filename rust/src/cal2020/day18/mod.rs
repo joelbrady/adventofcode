@@ -9,7 +9,7 @@ use crate::parse::parse_i32;
 pub fn main() {
     let input = include_str!("input");
 
-    let input = parse_input(&input);
+    let input = parse_input(input);
 
     let part1 = solve(&input);
 
@@ -88,6 +88,7 @@ fn solve(input: &Input) -> i64 {
 }
 
 fn evaluate(expression: &[Term]) -> i64 {
+    println!("solving {:?}", expression);
     let mut stack = Vec::new();
 
     for term in expression {
@@ -114,11 +115,11 @@ fn evaluate(expression: &[Term]) -> i64 {
             } else {
                 panic!("3 terms that aren't an expression")
             }
-
         }
     }
 
     if stack.len() != 1 {
+        println!("stack {:?}", stack);
         panic!()
     }
 
@@ -129,8 +130,91 @@ fn evaluate(expression: &[Term]) -> i64 {
     }
 }
 
-fn solve2(_: &Input) -> i32 {
-    todo!()
+fn solve2(input: &Input) -> i64 {
+    input.expressions.iter()
+        .map(|e| evaluate2(e))
+        .sum()
+}
+
+fn evaluate2(terms: &[Term]) -> i64 {
+    if terms.len() == 1 {
+        return match &terms[0] {
+            Term::Number(n) => *n,
+            Term::ParenExp(inner) => evaluate2(inner),
+            _ => panic!(),
+        };
+    }
+
+    if terms.len() < 3 {
+        panic!()
+    }
+
+    let terms = evaluate_parens(terms);
+    let terms = evaluate_addition(&terms);
+    let terms = evaluate_multiply(&terms);
+
+    evaluate2(&terms)
+}
+
+fn evaluate_addition(terms: &[Term]) -> Vec<Term> {
+    evaluate_operation(terms, &Term::Add, |a, b| a + b)
+}
+
+fn evaluate_multiply(terms: &[Term]) -> Vec<Term> {
+    evaluate_operation(terms, &Term::Multiply, |a, b| a * b)
+}
+
+fn evaluate_operation<F>(terms: &[Term], operation_to_match: &Term, operation: F) -> Vec<Term>
+    where F: Fn(i64, i64) -> i64 {
+    let mut output = vec![];
+
+    let mut i = 0;
+    while i < terms.len() {
+        let term = &terms[i];
+        match term {
+            Term::Number(n) => output.push(Term::Number(*n)),
+            Term::ParenExp(expr) => output.push(Term::ParenExp(expr.clone())),
+            add_or_multiply => {
+                if add_or_multiply == operation_to_match {
+                    let a = output.pop().expect("multiply should be preceded by a number");
+                    let a: i64 = match a {
+                        Term::Number(n) => n,
+                        _ => panic!("operator should be preceded by a number")
+                    };
+
+                    assert!((i + 1) < terms.len());
+                    let b = &terms[i + 1];
+                    i += 1;
+                    let b: i64 = match b {
+                        Term::Number(n) => *n,
+                        _ => panic!("operator should be succeeded by a number")
+                    };
+
+                    output.push(Term::Number(operation(a, b)))
+                } else {
+                    output.push(add_or_multiply.clone());
+                }
+            }
+        }
+        i += 1;
+    }
+
+    output
+}
+
+fn evaluate_parens(terms: &[Term]) -> Vec<Term> {
+    let mut output = vec![];
+
+    for term in terms {
+        let new_term = match term {
+            Term::ParenExp(expr) => Term::Number(evaluate2(expr)),
+            _ => term.clone(),
+        };
+
+        output.push(new_term);
+    }
+
+    output
 }
 
 #[cfg(test)]
@@ -139,7 +223,6 @@ mod test {
     use super::Term::{Add, Multiply, Number, ParenExp};
 
     #[test]
-
     fn test_parse_parens() {
         let input = "((1))";
 
@@ -192,7 +275,7 @@ mod test {
         let expected = Input {
             expressions: vec![
                 vec![Number(1), Add, Number(2)],
-                vec![Number(3), Add, Number(4)]
+                vec![Number(3), Add, Number(4)],
             ]
         };
 
@@ -295,11 +378,106 @@ mod test {
     }
 
     #[test]
+    fn test_evaluate_parens_simple_expression() {
+        let input = vec![Number(1), Add, ParenExp(vec![Number(23)])];
+        let expected = vec![Number(1), Add, Number(23)];
+
+        let actual = evaluate_parens(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_evaluate_parens_nested_expression() {
+        let input = vec![Number(1), Add, ParenExp(vec![Number(23), Multiply, Number(10)])];
+        let expected = vec![Number(1), Add, Number(230)];
+
+        let actual = evaluate_parens(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_evaluate_multiply() {
+        let input = vec![Number(23), Multiply, Number(10)];
+        let expected = vec![Number(230)];
+
+        let actual = evaluate_multiply(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_evaluate_multiply2() {
+        let input = vec![Number(23), Multiply, Number(10), Multiply, Number(2)];
+        let expected = vec![Number(230 * 2)];
+
+        let actual = evaluate_multiply(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example1_part2() {
+        let input = "1 + (2 * 3) + (4 * (5 + 6))";
+        let input = parse_input(input);
+
+        let expected = 51;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example2_part2() {
+        let input = "2 * 3 + (4 * 5)";
+        let input = parse_input(input);
+
+        let expected = 46;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example3_part2() {
+        let input = "5 + (8 * 3 + 9 + 3 * 4 * 3)";
+        let input = parse_input(input);
+
+        let expected = 1445;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example4_part2() {
+        let input = "5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))";
+        let input = parse_input(input);
+
+        let expected = 669060;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_example5_part2() {
+        let input = "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2";
+        let input = parse_input(input);
+
+        let expected = 23340;
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
     fn test_solution2() {
         let input = include_str!("input");
         let input = parse_input(input);
 
-        let expected = 2448;
+        let expected = 314455761823725;
         let actual = solve2(&input);
 
         assert_eq!(actual, expected)
