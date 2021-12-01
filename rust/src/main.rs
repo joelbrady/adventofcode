@@ -1,6 +1,7 @@
 mod cal2018;
 mod cal2019;
 mod cal2020;
+mod cal2021;
 mod graph;
 mod parse;
 
@@ -8,6 +9,11 @@ fn main() {
     call_2018();
     call_2019();
     call_2020();
+    call_2021();
+}
+
+fn call_2021() {
+    cal2021::day01::main();
 }
 
 fn call_2020() {
