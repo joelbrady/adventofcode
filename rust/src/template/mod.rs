@@ -11,19 +11,20 @@ pub fn main() {
     println!("The solution to part 2 is {}", part2);
 }
 
+#[derive(Debug)]
 struct Input {
 
 }
 
-fn parse_input(input: &str) -> Input {
+fn parse_input(_: &str) -> Input {
     todo!()
 }
 
-fn solve(input: &Input) -> i64 {
+fn solve(_: &Input) -> i64 {
     todo!()
 }
 
-fn solve2(input: &Input) -> i64 {
+fn solve2(_: &Input) -> i64 {
     todo!()
 }
 
