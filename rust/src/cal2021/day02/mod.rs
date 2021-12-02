@@ -64,18 +64,14 @@ impl Location {
             ..*self
         }
     }
-}
 
-impl Location {
     fn increase_aim(&self, x: i64) -> Location {
         Location {
             aim: self.aim + x,
             ..*self
         }
     }
-}
 
-impl Location {
     fn down(&self, amount: i64) -> Location {
         Location {
             depth: self.depth + amount,
