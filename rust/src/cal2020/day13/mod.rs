@@ -53,7 +53,6 @@ fn f(bus_id: u32, arrival_time: u32) -> u32 {
 struct Bus {
     offset: usize,
     bus_id: u128,
-    multiple: u128,
 }
 
 #[derive(Debug)]
@@ -70,7 +69,7 @@ impl ModEquation {
 
 fn solve2(input: &Input) -> u128 {
     let v: Vec<Bus> = input.buses.iter()
-        .map(|(index, bus_id)| Bus { offset: *index, bus_id: *bus_id as u128, multiple: 0 })
+        .map(|(index, bus_id)| Bus { offset: *index, bus_id: *bus_id as u128 })
         .collect();
 
     let mut equations: Vec<ModEquation> = v.iter()
@@ -212,14 +211,5 @@ mod test {
         let actual = solve2(&input);
 
         assert_eq!(actual, expected)
-    }
-
-    #[test]
-    fn test_solve_modular_equation1() {
-        let a = ModEquation { rhs: 2, modulus: 5 };
-        let b = ModEquation { rhs: 3, modulus: 7 };
-
-        let actual = solve_modular_equation(&a, &b);
-        dbg!(&actual);
     }
 }

@@ -7,3 +7,4 @@ edition = "2021"
 [dependencies]
 nom = "6.1.2"
 num-integer = "0.1.41"
+itertools = "0.10.1"
