@@ -176,12 +176,7 @@ fn filter_generic<F>(ns: &[BinaryNumber], f: F, default_on_tie: &BinaryDigit) ->
                 *default_on_tie
             };
             candidates = candidates.iter()
-                .filter(|n| if n.0[i] == filter_value {
-                    println!("keeping {:?}", n);
-                    true
-                } else {
-                    false
-                })
+                .filter(|n| n.0[i] == filter_value)
                 .cloned()
                 .collect();
         }
