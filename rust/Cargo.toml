@@ -5,6 +5,6 @@ authors = ["Joel Brady <joel.brady1@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-nom = "6.1.2"
+nom = "7.1.0"
 num-integer = "0.1.41"
 itertools = "0.10.1"
