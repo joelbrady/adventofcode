@@ -27,7 +27,7 @@ struct Input {
 
 const BOARD_SIZE: usize = 5;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 struct Board {
     numbers: [[i64; BOARD_SIZE]; BOARD_SIZE],
 }
@@ -95,9 +95,9 @@ fn parse_board(s: &str) -> IResult<&str, Board> {
     let mut board_array: [[i64; BOARD_SIZE]; BOARD_SIZE] = Default::default();
 
     let mut i = 0;
-    for row in 0..BOARD_SIZE {
-        for col in 0..BOARD_SIZE {
-            board_array[row][col] = numbers[i];
+    for row in board_array.iter_mut() {
+        for col in row.iter_mut() {
+            *col = numbers[i];
             i += 1;
         }
     }
@@ -138,11 +138,40 @@ fn solve(input: &Input) -> i64 {
         }
     }
 
-    0
+    panic!("no solution")
 }
 
-fn solve2(_: &Input) -> i64 {
-    todo!()
+fn solve2(input: &Input) -> i64 {
+    let numbers_to_draw = &input.numbers;
+    let boards = &input.boards;
+
+    for i in 0..numbers_to_draw.len() {
+        let slice = &numbers_to_draw[0..i];
+
+        let boards_with_bingo: Vec<&Board> = boards.iter()
+            .filter(|b| b.has_bingo(slice))
+            .collect();
+
+        if boards_with_bingo.len() == boards.len() {
+            let previous_slice = &slice[0..slice.len()-1];
+            assert_eq!(slice.len(), previous_slice.len() + 1);
+
+            let previous_boards_with_bingo: HashSet<&Board> = boards.iter()
+                .filter(|b| b.has_bingo(previous_slice))
+                .collect();
+
+            let winning_board = boards_with_bingo.iter()
+                .find(|b| !previous_boards_with_bingo.contains(**b))
+                .unwrap();
+
+            let unmarked_numbers: Vec<i64> = winning_board.unmarked_numbers(slice);
+            let sum: i64 = unmarked_numbers.iter().sum();
+            let number_just_called = slice.last().unwrap();
+            return sum * number_just_called;
+        }
+    }
+
+    panic!("no solution")
 }
 
 #[cfg(test)]
@@ -178,6 +207,28 @@ mod test {
 
         let expected = 60368;
         let actual = solve(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_part2_example1() {
+        let input = include_str!("example1");
+        let input = parse_input(input);
+        let expected = 1924;
+
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 17435;
+        let actual = solve2(&input);
 
         assert_eq!(actual, expected)
     }
