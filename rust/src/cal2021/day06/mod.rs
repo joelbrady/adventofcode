@@ -79,7 +79,7 @@ fn solve(input: &Input) -> u64 {
 }
 
 fn iterate(fish: &State, iterations: usize) -> State {
-    let mut new_state = fish.clone();
+    let mut new_state = *fish;
     for _ in 0..iterations {
         new_state = new_state.next();
     }
