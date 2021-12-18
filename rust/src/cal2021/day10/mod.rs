@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 pub fn main() {
     let input = include_str!("input");
 
@@ -24,7 +26,11 @@ fn parse_input(s: &str) -> Input {
 
 fn solve(input: &Input) -> i64 {
     input.lines.iter()
-        .filter_map(|l| find_first_invalid_closing_char(*l))
+        .filter_map(|l| match parse(*l) {
+            ParseResult::Invalid(c) => Some(c),
+            ParseResult::Incomplete(_) => None,
+            ParseResult::Valid => None,
+        })
         .map(score_char)
         .sum()
 }
@@ -43,7 +49,14 @@ fn matching(c: char) -> char {
     }
 }
 
-fn find_first_invalid_closing_char(s: &str) -> Option<char> {
+#[derive(Debug, Eq, PartialEq)]
+enum ParseResult {
+    Invalid(char),
+    Incomplete(Vec<char>),
+    Valid,
+}
+
+fn parse(s: &str) -> ParseResult {
     let mut stack = vec![];
 
     for c in s.chars() {
@@ -54,16 +67,20 @@ fn find_first_invalid_closing_char(s: &str) -> Option<char> {
                     if p == matching(c) {
                         continue;
                     } else {
-                        return Some(c);
+                        return ParseResult::Invalid(c);
                     }
                 } else {
-                    return Some(c);
+                    return ParseResult::Invalid(c);
                 }
             _ => panic!("unexpected {:?}", c),
         }
     }
 
-    None
+    if stack.is_empty() {
+        ParseResult::Valid
+    } else {
+        ParseResult::Incomplete(stack)
+    }
 }
 
 fn score_char(c: char) -> i64 {
@@ -76,8 +93,42 @@ fn score_char(c: char) -> i64 {
     }
 }
 
-fn solve2(_: &Input) -> i64 {
-    todo!()
+fn solve2(input: &Input) -> u64 {
+    let scores: Vec<u64> = input.lines.iter()
+        .filter_map(|l| match parse(*l) {
+            ParseResult::Invalid(_) => None,
+            ParseResult::Incomplete(v) => Some(v),
+            ParseResult::Valid => None,
+        })
+        .map(|v| score_autocomplete(&v))
+        .sorted()
+        .collect();
+
+    let median_index = scores.len() / 2;
+
+    scores[median_index]
+}
+
+fn score_autocomplete(cs: &[char]) -> u64 {
+    let chars_to_complete: Vec<char> = cs.iter()
+        .rev()
+        .map(|c| matching(*c))
+        .collect();
+
+    let mut score = 0;
+
+    for c in chars_to_complete {
+        score *= 5;
+        score += match c {
+            ')' => 1,
+            ']' => 2,
+            '}' => 3,
+            '>' => 4,
+            _ => panic!("unexpected {:?}", c)
+        }
+    }
+
+    score
 }
 
 #[cfg(test)]
@@ -87,9 +138,9 @@ mod test {
     #[test]
     fn test_find_first_invalid_closing_char() {
         let input = "()";
-        let expected = None;
+        let expected = ParseResult::Valid;
 
-        let actual = find_first_invalid_closing_char(input);
+        let actual = parse(input);
 
         assert_eq!(actual, expected)
     }
@@ -97,9 +148,9 @@ mod test {
     #[test]
     fn test_find_first_invalid_closing_char2() {
         let input = "(())";
-        let expected = None;
+        let expected = ParseResult::Valid;
 
-        let actual = find_first_invalid_closing_char(input);
+        let actual = parse(input);
 
         assert_eq!(actual, expected)
     }
@@ -107,9 +158,9 @@ mod test {
     #[test]
     fn test_find_first_invalid_closing_char3() {
         let input = "(())()()((()()))";
-        let expected = None;
+        let expected = ParseResult::Valid;
 
-        let actual = find_first_invalid_closing_char(input);
+        let actual = parse(input);
 
         assert_eq!(actual, expected)
     }
@@ -117,9 +168,9 @@ mod test {
     #[test]
     fn test_find_first_invalid_closing_char4() {
         let input = "(())()()((()())";
-        let expected = None;
+        let expected = ParseResult::Incomplete(vec!['(']);
 
-        let actual = find_first_invalid_closing_char(input);
+        let actual = parse(input);
 
         assert_eq!(actual, expected)
     }
@@ -127,9 +178,9 @@ mod test {
     #[test]
     fn test_find_first_invalid_closing_char5() {
         let input = "(())()()((()())))";
-        let expected = Some(')');
+        let expected = ParseResult::Invalid(')');
 
-        let actual = find_first_invalid_closing_char(input);
+        let actual = parse(input);
 
         assert_eq!(actual, expected)
     }
@@ -152,6 +203,28 @@ mod test {
 
         let expected = 370407;
         let actual = solve(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_part2_example1() {
+        let input = include_str!("example1");
+        let input = parse_input(input);
+        let expected = 288957;
+
+        let actual = solve2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solution2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let expected = 3249889609;
+        let actual = solve2(&input);
 
         assert_eq!(actual, expected)
     }
