@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nom::character::complete::line_ending;
 use nom::IResult;
 use nom::multi::{count, separated_list1};
@@ -45,8 +46,13 @@ fn solve_part1(input: &Input) -> u32 {
         .unwrap()
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> u32 {
+    input.elves.iter()
+        .map(|e| e.items.iter().sum::<u32>())
+        .sorted()
+        .rev()
+        .take(3)
+        .sum()
 }
 
 #[cfg(test)]
@@ -98,6 +104,28 @@ mod test {
 
         let actual = solve_part1(&input);
         let expected = 64929;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2_example() {
+        let input = include_str!("example");
+        let input = parse_input(input);
+
+        let actual = solve_part2(&input);
+        let expected = 45000;
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2() {
+        let input = include_str!("input");
+        let input = parse_input(input);
+
+        let actual = solve_part2(&input);
+        let expected = 193697;
 
         assert_eq!(actual, expected)
     }
