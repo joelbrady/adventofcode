@@ -17,6 +17,7 @@ fn main() {
 fn call_2022() {
     cal2022::template::main();
     cal2022::day01::main();
+    cal2022::day02::main();
 }
 
 fn call_2021() {
@@ -77,7 +78,7 @@ fn call_2019() {
 }
 
 fn call_2018() {
-    cal2018::problem10::solve().unwrap();
-    cal2018::problem11::solve();
+    cal2018::problem10::main().unwrap();
+    cal2018::problem11::main();
     cal2018::problem13::main();
 }

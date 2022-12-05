@@ -1,4 +1,4 @@
-pub fn solve() {
+pub fn main() {
     let input = 4842;
 
     let grid: Grid = Grid::from_seed(input);
@@ -152,6 +152,6 @@ mod tests {
 
     #[test]
     fn solve_puzzle() {
-        solve()
+        main()
     }
 }

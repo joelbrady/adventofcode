@@ -8,7 +8,7 @@ use nom::sequence::separated_pair;
 
 use crate::parse::parse_i32;
 
-pub fn solve() -> std::io::Result<()> {
+pub fn main() -> std::io::Result<()> {
     let input = include_str!("input.a");
     let lines: Vec<String> = input.lines().map(|s| s.to_string()).collect();
 
@@ -197,6 +197,6 @@ mod tests {
 
     #[test]
     fn solve_test() {
-        solve().unwrap()
+        main().unwrap()
     }
 }
