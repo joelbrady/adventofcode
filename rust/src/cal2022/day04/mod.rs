@@ -78,8 +78,24 @@ fn contains(a: RangeInclusive<u32>, b: RangeInclusive<u32>) -> bool {
     true
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> usize {
+    input.pairs.iter()
+        .filter(|pair| {
+            let a = pair.first.clone();
+            let b = pair.second.clone();
+
+            overlaps(a.clone(), b.clone()) || overlaps(b, a)
+        })
+        .count()
+}
+
+fn overlaps(a: RangeInclusive<u32>, b: RangeInclusive<u32>) -> bool {
+    for ia in a {
+        if b.contains(&ia) {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -107,7 +123,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 4;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -116,7 +132,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 827;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
