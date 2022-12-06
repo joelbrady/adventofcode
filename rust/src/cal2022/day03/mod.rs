@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 pub fn main() {
     let input = include_str!("input");
 
@@ -57,8 +59,29 @@ fn priority(item: char) -> u32 {
     }
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> u32 {
+    input.rucksacks.as_slice()
+        .chunks(3)
+        .map(find_common_item)
+        .map(priority)
+        .sum()
+}
+
+fn find_common_item(sacks: &[Rucksack]) -> char {
+    let mut set = HashSet::new();
+    set.extend(sacks[0].contents.iter().copied());
+    for sack in &sacks[1..] {
+        let mut common_items = HashSet::new();
+        for item in &sack.contents {
+            if set.contains(item) {
+                common_items.insert(*item);
+            }
+        }
+        set = common_items;
+    }
+
+    assert_eq!(set.len(), 1);
+    set.into_iter().next().unwrap()
 }
 
 #[cfg(test)]
@@ -102,6 +125,24 @@ mod test {
         let input = parse_input(include_str!("input"));
         let expected = 8053;
         let actual = solve_part1(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2_example() {
+        let input = parse_input(include_str!("example"));
+        let expected = 70;
+        let actual = solve_part2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2() {
+        let input = parse_input(include_str!("input"));
+        let expected = 2425;
+        let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
     }
