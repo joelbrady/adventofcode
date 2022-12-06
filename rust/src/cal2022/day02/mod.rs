@@ -28,16 +28,17 @@ struct Input {
 struct Round {
     them: Choice,
     us: Choice,
+    target: RoundResult,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
 enum Choice {
     Rock,
     Paper,
     Scissors,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 enum RoundResult {
     Win,
     Lose,
@@ -78,9 +79,24 @@ fn parse_input(input: &str) -> Input {
 }
 
 fn parse_round(input: &str) -> IResult<&str, Round> {
-    let (rem, (them, us)) = separated_pair(parse_choice, multispace1, parse_choice)(input)?;
+    let (rem, (them, (us, target))) = separated_pair(parse_choice, multispace1, parse_us)(input)?;
 
-    Ok((rem, Round { us, them }))
+    Ok((rem, Round { us, them, target }))
+}
+
+fn parse_us(input: &str) -> IResult<&str, (Choice, RoundResult)> {
+    let (rem, choice) = parse_choice(input)?;
+    let (_, result) = parse_result(input)?;
+
+    Ok((rem, (choice, result)))
+}
+
+fn parse_result(input: &str) -> IResult<&str, RoundResult> {
+    alt((
+        map(tag_no_case("X"), |_| RoundResult::Lose),
+        map(tag_no_case("Y"), |_| RoundResult::Draw),
+        map(tag_no_case("Z"), |_| RoundResult::Win),
+    ))(input)
 }
 
 fn parse_choice(input: &str) -> IResult<&str, Choice> {
@@ -126,10 +142,10 @@ fn solve_part1(input: &Input) -> u32 {
 
 fn score_round(round: &Round) -> u32 {
     let result = round.us.beats(&round.them);
-    score_choice(&round.us) + score_result(&result)
+    score_choice(round.us) + score_result(result)
 }
 
-fn score_choice(choice: &Choice) -> u32 {
+fn score_choice(choice: Choice) -> u32 {
     match choice {
         Choice::Rock => 1,
         Choice::Paper => 2,
@@ -137,7 +153,7 @@ fn score_choice(choice: &Choice) -> u32 {
     }
 }
 
-fn score_result(result: &RoundResult) -> u32 {
+fn score_result(result: RoundResult) -> u32 {
     match result {
         RoundResult::Win => 6,
         RoundResult::Lose => 0,
@@ -145,8 +161,19 @@ fn score_result(result: &RoundResult) -> u32 {
     }
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> u32 {
+    input.rounds.iter()
+        .map(|r| {
+            let us = choice_for_result(r.them, r.target);
+            score_choice(us) + score_result(r.target)
+        })
+        .sum()
+}
+
+fn choice_for_result(them: Choice, target_result: RoundResult) -> Choice {
+    [Choice::Rock, Choice::Paper, Choice::Scissors].into_iter()
+        .find(|c| c.beats(&them) == target_result)
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -159,6 +186,7 @@ mod test {
         let actual = score_round(&Round {
             them: Choice::Rock,
             us: Choice::Paper,
+            target: RoundResult::Draw,
         });
 
         assert_eq!(actual, expected)
@@ -170,6 +198,7 @@ mod test {
         let actual = score_round(&Round {
             them: Choice::Paper,
             us: Choice::Rock,
+            target: RoundResult::Lose,
         });
 
         assert_eq!(actual, expected)
@@ -181,6 +210,7 @@ mod test {
         let actual = score_round(&Round {
             them: Choice::Scissors,
             us: Choice::Scissors,
+            target: RoundResult::Win,
         });
 
         assert_eq!(actual, expected)
@@ -195,14 +225,17 @@ mod test {
                 Round {
                     them: Rock,
                     us: Paper,
+                    target: RoundResult::Draw,
                 },
                 Round {
                     them: Paper,
                     us: Rock,
+                    target: RoundResult::Lose,
                 },
                 Round {
                     them: Scissors,
                     us: Scissors,
+                    target: RoundResult::Win,
                 },
             ],
         };
@@ -225,6 +258,24 @@ mod test {
         let input = parse_input(include_str!("input"));
         let expected = 14297;
         let actual = solve_part1(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2_example() {
+        let input = parse_input(include_str!("example"));
+        let expected = 12;
+        let actual = solve_part2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2() {
+        let input = parse_input(include_str!("input"));
+        let expected = 10498;
+        let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
     }
