@@ -180,8 +180,30 @@ fn get_stack_by_label<'a>(stacks: &'a mut [Stack], label: &str) -> &'a mut Stack
     panic!()
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> String {
+    let mut stacks = input.stacks.clone();
+
+    for m in &input.moves {
+        let mut buffer = vec![];
+
+        let src = get_stack_by_label(&mut stacks, &m.src);
+        for _ in 0..m.count {
+            let c = src.crates.pop().unwrap();
+            buffer.push(c);
+        }
+
+        buffer.reverse();
+
+        let dst = get_stack_by_label(&mut stacks, &m.dst);
+        for c in buffer {
+            dst.crates.push(c);
+        }
+    }
+
+    stacks.iter()
+        .map(|s| s.crates.last().unwrap())
+        .map(|c| c.label.as_str())
+        .collect()
 }
 
 #[cfg(test)]
@@ -258,7 +280,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = "MCD";
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -267,7 +289,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = "LVMRWSSPZ";
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
