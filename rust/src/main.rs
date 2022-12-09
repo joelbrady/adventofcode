@@ -22,6 +22,7 @@ fn call_2022() {
     cal2022::day04::main();
     cal2022::day05::main();
     cal2022::day06::main();
+    cal2022::day07::main();
 }
 
 fn call_2021() {
