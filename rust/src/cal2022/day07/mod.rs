@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{line_ending, space1};
@@ -322,8 +323,56 @@ impl FileSystem {
     }
 }
 
-fn solve_part2(_input: &Input) -> u32 {
-    todo!()
+fn solve_part2(input: &Input) -> u32 {
+    let mut fs = FileSystem::new();
+
+    for command in &input.commands {
+        match command {
+            Command::Cd(path) => fs.cd(path),
+            Command::Dir(dir) => {
+                for entry in &dir.entries {
+                    match entry {
+                        DirEntry::Directory(name) => {
+                            fs.mkdir(name);
+                        }
+                        DirEntry::File(file) => {
+                            fs.make_file(file);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let all_dirs: Vec<usize> = fs.nodes.iter()
+        .enumerate()
+        .filter_map(|(i, n)| match n {
+            Node::Directory(_) => Some(i),
+            Node::File(_) => None,
+        })
+        .collect();
+
+    let all_dir_sizes: Vec<(usize, u32)> = all_dirs.iter()
+        .map(|i| (*i, fs.total_size(*i)))
+        .collect();
+
+    let total_disk_space = 70000000;
+    let required_free_space = 30000000;
+    let currently_used = fs.total_size(0);
+
+    all_dir_sizes.iter()
+        .filter_map(|(i, dir_size)| {
+            let free_if_deleted = total_disk_space - currently_used + dir_size;
+            if free_if_deleted >= required_free_space {
+                Some((i, dir_size))
+            } else {
+                None
+            }
+        })
+        .sorted_by_key(|(_, dir_size)| **dir_size)
+        .map(|(_, dir_size)| *dir_size)
+        .next()
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -351,7 +400,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 24933642;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -360,7 +409,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 6183184;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
