@@ -64,61 +64,74 @@ fn parse_direction(s: &str) -> IResult<&str, V> {
 }
 
 fn solve_part1(input: &Input) -> i32 {
-    let mut head = V::new(0, 0);
-    let mut tail = V::new(0, 0);
+    solve(input, 2)
+}
+
+fn solve(input: &Input, n_segments: usize) -> i32 {
+    let mut segments = vec![V::new(0, 0); n_segments];
 
     let mut tail_visited = HashSet::new();
-    tail_visited.insert(tail);
+    tail_visited.insert(V::new(0, 0));
 
-    print_world(head, tail, &tail_visited);
+    print_world(&segments, &tail_visited);
 
     for i in &input.instructions {
         for _ in 0..i.amount {
-            head = head + i.dir;
+            segments[0] = segments[0] + i.dir;
 
-            if tail.is_touching(head) {
-                // touching
-            } else if (tail.x == head.x || tail.y == head.y) && head.dist(tail) > 0 {
-                // same col or row
-                let dir = tail.direction_to(head);
-                let dir = dir.normalize();
-                tail = tail + dir;
-                tail_visited.insert(tail);
-            } else {
-                // diagonal
-                let mut dir = V::new(0, 0);
-                if head.x > tail.x {
-                    dir = dir + V::new(1, 0);
+            for i in 1..n_segments {
+                let head = segments[i - 1];
+                let tail = segments[i];
+                let new_tail = if tail.is_touching(head) {
+                    // touching
+                    tail
+                } else if (tail.x == head.x || tail.y == head.y) && head.dist(tail) > 0 {
+                    // same col or row
+                    let dir = tail.direction_to(head);
+                    let dir = dir.normalize();
+                    tail + dir
                 } else {
-                    dir = dir + V::new(-1, 0);
-                }
+                    // diagonal
+                    let mut dir = V::new(0, 0);
 
-                if head.y > tail.y {
-                    dir = dir + V::new(0, 1);
-                } else {
-                    dir = dir + V::new(0, -1);
-                }
+                    if head.x > tail.x {
+                        dir = dir + V::new(1, 0);
+                    } else {
+                        dir = dir + V::new(-1, 0);
+                    }
 
-                tail = tail + dir;
-                tail_visited.insert(tail);
+                    if head.y > tail.y {
+                        dir = dir + V::new(0, 1);
+                    } else {
+                        dir = dir + V::new(0, -1);
+                    }
+
+                    tail + dir
+                };
+
+                segments[i] = new_tail;
             }
 
-            print_world(head, tail, &tail_visited);
+            let tail = segments[n_segments - 1];
+            tail_visited.insert(tail);
+
+            print_world(&segments, &tail_visited);
         }
     }
 
     tail_visited.len() as i32
 }
 
-fn print_world(head: V, tail: V, tail_visited: &HashSet<V>) {
+fn print_world(segments: &[V], tail_visited: &HashSet<V>) {
     if DEBUG {
         for y in (0..5).rev() {
             for x in 0..5 {
                 let c = V::new(x, y);
-                if c == head {
+                let n = segments.iter().position(|s| *s == c);
+                if c == segments[0] {
                     print!("H");
-                } else if c == tail {
-                    print!("T");
+                } else if let Some(i) = n {
+                    print!("{i}");
                 } else if c == V::new(0, 0) {
                     print!("s");
                 } else if tail_visited.contains(&c) {
@@ -208,8 +221,8 @@ impl std::ops::Sub for V {
     }
 }
 
-fn solve_part2(_input: &Input) -> i32 {
-    todo!()
+fn solve_part2(input: &Input) -> i32 {
+    solve(input, 10)
 }
 
 #[cfg(test)]
@@ -235,9 +248,18 @@ mod test {
     }
 
     #[test]
-    fn test_solve_part2_example() {
+    fn test_solve_part2_example1() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 1;
+        let actual = solve_part2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2_example2() {
+        let input = parse_input(include_str!("example2"));
+        let expected = 36;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -246,7 +268,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 2511;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
