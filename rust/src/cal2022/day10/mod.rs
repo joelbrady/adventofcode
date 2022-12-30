@@ -14,8 +14,7 @@ pub fn main() {
 
     println!("The solution to part 1 is {}", part1);
 
-    let part2 = solve_part2(&input);
-    println!("The solution to part 2 is {}", part2);
+    solve_part2(&input);
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -153,8 +152,29 @@ fn solve_part1(input: &Input) -> i64 {
         .sum()
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) {
+    let mut m = Machine::new(&input.instructions);
+
+    let mut crt_x = 0;
+    m.start();
+
+    while !m.halted() {
+        let (sprite_position, _cycle_in_progress) = m.next_cycle();
+        let start = sprite_position - 1;
+        let end = sprite_position + 1;
+        if (start..=end).contains(&crt_x) {
+            print!("#");
+        } else {
+            print!(".")
+        }
+        if (crt_x + 1) % 40 == 0 {
+            println!();
+            crt_x = 0;
+        } else {
+            crt_x += 1;
+
+        }
+    }
 }
 
 #[cfg(test)]
@@ -248,18 +268,12 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
-        let actual = solve_part2(&input);
-
-        assert_eq!(actual, expected)
+        solve_part2(&input);
     }
 
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
-        let actual = solve_part2(&input);
-
-        assert_eq!(actual, expected)
+        solve_part2(&input);
     }
 }
