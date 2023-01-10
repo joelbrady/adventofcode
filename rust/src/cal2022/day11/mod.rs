@@ -169,10 +169,8 @@ fn solve_part1(input: &Input) -> u64 {
     for _ in 0..n_rounds {
         for i in 0..monkeys.len() {
             let mut monkey = monkeys[i].clone();
-            println!("Monkey {}", monkey.name.0);
             let mut to_distribute: HashMap<MonkeyName, Vec<Item>> = HashMap::new();
             while let Some(item) = monkey.items.pop_front() {
-                println!("  Monkey inspects an item with a worry level of {}", item.worry_level);
                 let k = inspections.entry(monkey.name).or_default();
                 *k += 1;
                 let worry_level = item.worry_level;
@@ -181,21 +179,15 @@ fn solve_part1(input: &Input) -> u64 {
                     Operation::Mul(n) => worry_level * n,
                     Operation::Square => worry_level * worry_level,
                 };
-                println!("    Worry level is now {worry_level}");
 
                 let worry_level = worry_level / 3;
 
-                println!("    Monkey gets bored with item. Worry level is divided by 3 to {worry_level}");
-
                 let target_monkey = if worry_level % monkey.test.divisor == 0 {
-                    println!("    Current worry level is divisible by {}", monkey.test.divisor);
                     monkey.test.true_branch
                 } else {
-                    println!("    Current worry level is not divisible by {}", monkey.test.divisor);
                     monkey.test.false_branch
                 };
 
-                println!("    Item with worry level {worry_level} is thrown to monkey {}.", target_monkey.0);
                 to_distribute.entry(target_monkey).or_default().push(Item { worry_level });
 
             }
@@ -210,8 +202,54 @@ fn solve_part1(input: &Input) -> u64 {
     inspections.into_values().sorted().rev().take(2).product()
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> u64 {
+    let mut monkeys = input.monkeys.clone();
+
+    // assume that the monkeys are labelled 0..n
+    for i in 0..monkeys.len() {
+        assert!(monkeys.iter().any(|m| m.name.0 == i));
+    }
+
+    let modulo: u64 = monkeys.iter().map(|m| m.test.divisor).product();
+
+    let n_rounds = 10000;
+
+    let mut inspections: HashMap<MonkeyName, u64> = HashMap::new();
+
+    for _ in 0..n_rounds {
+        for i in 0..monkeys.len() {
+            let mut monkey = monkeys[i].clone();
+            let mut to_distribute: HashMap<MonkeyName, Vec<Item>> = HashMap::new();
+            while let Some(item) = monkey.items.pop_front() {
+                let k = inspections.entry(monkey.name).or_default();
+                *k += 1;
+                let worry_level = item.worry_level;
+                let worry_level = match monkey.operation {
+                    Operation::Add(n) => worry_level + n,
+                    Operation::Mul(n) => worry_level * n,
+                    Operation::Square => worry_level * worry_level,
+                };
+
+                let worry_level = worry_level % modulo;
+
+                let target_monkey = if worry_level % monkey.test.divisor == 0 {
+                    monkey.test.true_branch
+                } else {
+                    monkey.test.false_branch
+                };
+
+                to_distribute.entry(target_monkey).or_default().push(Item { worry_level });
+
+            }
+            monkeys[i] = monkey;
+            for (name, items) in to_distribute {
+                let m = monkeys.iter_mut().find(|m| m.name == name).unwrap();
+                m.items.extend(items);
+            }
+        }
+    }
+
+    inspections.into_values().sorted().rev().take(2).product()
 }
 
 #[cfg(test)]
@@ -239,7 +277,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 2713310158;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -248,7 +286,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 13606755504;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
