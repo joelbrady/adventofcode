@@ -68,12 +68,17 @@ fn parse_row(s: &str) -> IResult<&str, Vec<Cell>> {
 }
 
 fn solve_part1(input: &Input) -> i32 {
-    let mut queue: BinaryHeap<Node> = BinaryHeap::new();
     let grid = &input.hill;
-    let n_rows = grid.len() as i32;
-    let n_cols = grid[0].len() as i32;
     let start = find_coords_of_flag(grid, Flag::Start);
     let end = find_coords_of_flag(grid, Flag::End);
+
+    dijkstra(grid, start, end).unwrap()
+}
+
+fn dijkstra(grid: &[Vec<Cell>], start: (i32, i32), end: (i32, i32)) -> Option<i32> {
+    let mut queue: BinaryHeap<Node> = BinaryHeap::new();
+    let n_rows = grid.len() as i32;
+    let n_cols = grid[0].len() as i32;
 
     queue.push(Node { distance: 0, coordinates: start, height: 0 });
     let mut visited = HashSet::new();
@@ -83,7 +88,7 @@ fn solve_part1(input: &Input) -> i32 {
             continue;
         }
         if current.coordinates == end {
-            return current.distance;
+            return Some(current.distance);
         }
 
         let ds = [
@@ -115,7 +120,7 @@ fn solve_part1(input: &Input) -> i32 {
         visited.insert(current.coordinates);
     }
 
-    panic!("no solution found")
+    None
 }
 
 fn find_coords_of_flag(grid: &[Vec<Cell>], target: Flag) -> (i32, i32) {
@@ -125,6 +130,17 @@ fn find_coords_of_flag(grid: &[Vec<Cell>], target: Flag) -> (i32, i32) {
         .find(|(_, _, cell)| matches!(cell.flag, _ if cell.flag == target))
         .map(|(x, y, _)| (x as i32, y as i32))
         .unwrap()
+}
+
+fn find_all_a(grid: &[Vec<Cell>]) -> Vec<(i32, i32)> {
+    grid.iter()
+        .enumerate()
+        .flat_map(|(y, row)| row.iter().enumerate().map(move |(x, cell)| (x, y, cell)))
+        .filter(|(_, _, cell)| {
+            cell.height == 0
+        })
+        .map(|(x, y, _)| (x as i32, y as i32))
+        .collect()
 }
 
 #[derive(Debug)]
@@ -154,8 +170,15 @@ impl PartialEq for Node {
 
 impl Eq for Node {}
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> i32 {
+    let grid = &input.hill;
+    let starts = find_all_a(grid);
+    let end = find_coords_of_flag(grid, Flag::End);
+
+    starts.into_iter()
+        .filter_map(|start| dijkstra(grid, start, end))
+        .min()
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -183,7 +206,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 29;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -192,7 +215,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 446;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
