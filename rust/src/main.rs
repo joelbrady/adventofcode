@@ -15,7 +15,6 @@ fn main() {
 }
 
 fn call_2022() {
-    cal2022::template::main();
     cal2022::day01::main();
     cal2022::day02::main();
     cal2022::day03::main();
@@ -27,6 +26,7 @@ fn call_2022() {
     cal2022::day09::main();
     cal2022::day10::main();
     cal2022::day11::main();
+    cal2022::day12::main();
 
     cal2022::day21::main();
 }

@@ -1,6 +1,5 @@
 pub fn main() {
     let input = include_str!("input");
-
     let input = parse_input(input);
 
     let part1 = solve(&input);
@@ -33,23 +32,37 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_part1_example1() {
-        let input = include_str!("example1");
-        let input = parse_input(input);
+    fn test_solve_part1_example() {
+        let input = parse_input(include_str!("example"));
         let expected = 0;
-
-        let actual = solve(&input);
+        let actual = solve_part1(&input);
 
         assert_eq!(actual, expected)
     }
 
     #[test]
-    fn test_solution() {
-        let input = include_str!("input");
-        let input = parse_input(input);
+    fn test_solve_part1() {
+        let input = parse_input(include_str!("input"));
+        let expected = 0;
+        let actual = solve_part1(&input);
 
-        let expected = 1;
-        let actual = solve(&input);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2_example() {
+        let input = parse_input(include_str!("example"));
+        let expected = 0;
+        let actual = solve_part2(&input);
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_solve_part2() {
+        let input = parse_input(include_str!("input"));
+        let expected = 0;
+        let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
     }
