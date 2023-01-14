@@ -8,3 +8,6 @@ edition = "2021"
 nom = "=7.1.1"
 num-integer = "=0.1.45"
 itertools = "=0.10.5"
+
+[profile.dev]
+opt-level = 3
