@@ -98,7 +98,7 @@ struct VerticalSegment {
 fn parse_input(s: &str) -> Input {
     let (_, lines) = separated_list1(line_ending, parse_line)(s).unwrap();
 
-    Input { lines}
+    Input { lines }
 }
 
 fn parse_line(s: &str) -> IResult<&str, Line> {
@@ -120,12 +120,33 @@ fn parse_line(s: &str) -> IResult<&str, Line> {
 
 struct Rocks<'a> {
     lines: &'a [Line],
+    ground: bool,
+    min_bounds: Option<(i64, i64)>,
+    max_bounds: Option<(i64, i64)>,
 }
 
-impl <'a> Rocks<'a> {
+impl<'a> Rocks<'a> {
+    fn calculate_bounds(&mut self) {
+        self.min_bounds = Some(self.min_bounds());
+        self.max_bounds = Some(self.max_bounds());
+    }
+
     fn contains(&'a self, v: &(i64, i64)) -> bool {
-        self.lines.iter()
-            .any(|line| line.contains(v))
+        let hit_lines = self.lines.iter()
+            .any(|line| line.contains(v));
+
+        if self.ground {
+            if !hit_lines {
+                let (_, max_y) = self.max_bounds();
+                let (_, y) = v;
+
+                *y == (max_y + 2)
+            } else {
+                true
+            }
+        } else {
+            hit_lines
+        }
     }
 
     fn in_bounds(&'a self, (x, y): &(i64, i64)) -> bool {
@@ -135,34 +156,39 @@ impl <'a> Rocks<'a> {
         let x = *x;
         let y = *y;
 
-        !(x < min_x || x > max_x || y > max_y)
+        if self.ground {
+            y <= (max_y + 2)
+        } else {
+            !(x < min_x || x > max_x || y > max_y)
+        }
     }
 
     fn min_bounds(&self) -> (i64, i64) {
-        self.lines.iter()
-            .flat_map(|l| l.segments.iter())
-            .map(|s| s.min_bounds())
-            .reduce(|(ax, ay), (bx, by)| (ax.min(bx), ay.min(by)))
-            .unwrap()
+        self.min_bounds.unwrap_or_else(||
+            self.lines.iter()
+                .flat_map(|l| l.segments.iter())
+                .map(|s| s.min_bounds())
+                .reduce(|(ax, ay), (bx, by)| (ax.min(bx), ay.min(by)))
+                .unwrap())
     }
 
     fn max_bounds(&self) -> (i64, i64) {
-        self.lines.iter()
-            .flat_map(|l| l.segments.iter())
-            .map(|s| s.max_bounds())
-            .reduce(|(ax, ay), (bx, by)| (ax.max(bx), ay.max(by)))
-            .unwrap()
+        self.max_bounds.unwrap_or_else(||
+            self.lines.iter()
+                .flat_map(|l| l.segments.iter())
+                .map(|s| s.max_bounds())
+                .reduce(|(ax, ay), (bx, by)| (ax.max(bx), ay.max(by)))
+                .unwrap())
     }
 }
 
 fn solve_part1(input: &Input) -> i64 {
-    let rocks = Rocks { lines: &input.lines };
+    let rocks = Rocks { lines: &input.lines, ground: false, min_bounds: None, max_bounds: None };
     let mut sand_at_rest = HashSet::new();
 
     loop {
         let mut prev = (500, -1);
         let mut current = (500, 0);
-
 
         while prev != current && rocks.in_bounds(&current) {
             // print(&rocks, &sand_at_rest, current);
@@ -216,8 +242,46 @@ fn print(rocks: &Rocks, sand_at_rest: &HashSet<(i64, i64)>, moving_sand: (i64, i
     }
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> i64 {
+    let mut rocks = Rocks { lines: &input.lines, ground: true, min_bounds: None, max_bounds: None };
+    rocks.calculate_bounds();
+    let rocks = rocks;
+    let mut sand_at_rest = HashSet::new();
+
+    loop {
+        let mut prev = (500, -1);
+        let mut current = (500, 0);
+
+        while prev != current && rocks.in_bounds(&current) {
+            // print(&rocks, &sand_at_rest, current);
+
+            let dirs = [(0, 1), (-1, 1), (1, 1)];
+
+            let mut moved = false;
+            for (dx, dy) in dirs {
+                let (x, y) = current;
+                let (x, y) = (x + dx, y + dy);
+
+                if !rocks.contains(&(x, y)) && !sand_at_rest.contains(&(x, y)) {
+                    prev = current;
+                    current = (x, y);
+                    moved = true;
+                    break;
+                }
+            }
+
+            if !moved {
+                prev = current;
+            }
+        }
+
+        if prev == current {
+            sand_at_rest.insert(current);
+            if current == (500, 0) {
+                return sand_at_rest.len() as i64;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -245,7 +309,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 93;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -254,7 +318,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 25161;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
