@@ -1,3 +1,5 @@
+extern crate core;
+
 mod cal2018;
 mod cal2019;
 mod cal2020;
@@ -30,6 +32,7 @@ fn call_2022() {
     cal2022::day13::main();
     cal2022::day14::main();
     cal2022::day15::main();
+    cal2022::day16::main();
 
     cal2022::day21::main();
 }
