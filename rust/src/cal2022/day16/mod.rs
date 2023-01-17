@@ -89,7 +89,14 @@ fn solve_part1(input: Input) -> i64 {
         .collect();
 
     // calculate starting nodes where pressure is > 0, start at steps from AA
-    let mut queue = starting_nodes(&rooms);
+
+    let mut queue: VecDeque<Node> = [Node {
+        room: "AA",
+        steps: 0,
+        pressure_rate: 0,
+        pressure: 0,
+        open_valves: Rc::new(HashSet::new()),
+    }].into_iter().collect();
 
     // calculate simpler graph where nodes with no flow are removed, new edges could have weights > 1
     let edges: HashMap<&str, Vec<(&str, i64)>> = calculate_simplified_graph(&rooms);
@@ -113,34 +120,20 @@ fn solve_part1(input: Input) -> i64 {
         seen.insert(current);
     }
 
+
     end_nodes.into_iter()
         .max()
         .unwrap()
 }
 
-fn starting_nodes<'a>(rooms: &HashMap<&'a str, Room>) -> VecDeque<Node<'a>> {
-    rooms.iter()
-        .filter(|(_, room)| room.flow_rate > 0)
-        .map(|(label, _)| *label)
-        .map(|label| (label, bfs(rooms, label)))
-        .map(|(room, steps)| Node {
-            room,
-            pressure: 0,
-            pressure_rate: 0,
-            open_valves: Rc::new(HashSet::new()),
-            steps,
-        })
-        .collect()
-}
-
-fn bfs(rooms: &HashMap<&str, Room>, target: &str) -> i64 {
+fn bfs(rooms: &HashMap<&str, Room>, start: &str, target: &str) -> i64 {
     struct Node<'a> {
         label: &'a str,
         distance: i64,
     }
     let mut queue = VecDeque::new();
     let start = Node {
-        label: "AA",
+        label: start,
         distance: 0,
     };
     queue.push_back(start);
@@ -163,7 +156,7 @@ fn bfs(rooms: &HashMap<&str, Room>, target: &str) -> i64 {
     panic!("could not find path to {target}")
 }
 
-fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room>) -> HashMap<&'a str, Vec<(&'a str, i64)>> {
+fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room<'a>>) -> HashMap<&'a str, Vec<(&'a str, i64)>> {
     let mut edges: HashMap<&str, Vec<(&str, i64)>> = HashMap::new();
 
     for start in rooms.keys() {
@@ -182,6 +175,22 @@ fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room>) -> HashMap<&'a
             }
         }
     }
+
+    let aa = rooms.get("AA").unwrap();
+    let non_zero_valves: Vec<_> = edges.keys().copied().collect();
+    for e in non_zero_valves {
+        let d = bfs(rooms, "AA", e);
+        println!("adding edge {} -> {}", e, aa.label);
+        edges.entry(e).or_default().push((aa.label, d));
+        if "AA" != aa.label {
+            dbg!(aa);
+            panic!();
+        }
+        println!("adding edge {} -> {}", aa.label, e);
+        edges.entry(aa.label).or_default().push((e, d));
+    }
+
+    assert!(edges.contains_key("AA"));
 
     edges
 }
@@ -225,7 +234,7 @@ fn generate_children<'a>(rooms: &HashMap<&'a str, Room>, current: &Node<'a>, edg
     new_nodes.push(new);
 
     // move to adjacent rooms
-    for (adj_room, d) in edges.get(current.room).unwrap() {
+    for (adj_room, d) in edges.get(current.room).unwrap_or_else(|| panic!("tried to move to {}", current.room)) {
         let new = Node {
             room: adj_room,
             steps: current.steps + d,
@@ -320,6 +329,13 @@ mod test {
                 pressure: 0,
                 pressure_rate: 20,
             },
+            Node {
+                room: "AA",
+                open_valves: open_valves([]),
+                steps: 2,
+                pressure: 0,
+                pressure_rate: 0,
+            },
         ];
         expected.sort_by_key(|n| n.room);
 
@@ -352,7 +368,7 @@ mod test {
                 steps: 3,
                 pressure: 20,
                 pressure_rate: 20,
-                open_valves: open_valves(["DD"])
+                open_valves: open_valves(["DD"]),
             }
         }))
     }
@@ -369,7 +385,7 @@ mod test {
             steps: 3,
             pressure: 20,
             pressure_rate: 20,
-            open_valves: open_valves(["DD"])
+            open_valves: open_valves(["DD"]),
         };
 
         let actual = generate_children(&rooms, &start, &edges);
@@ -380,7 +396,7 @@ mod test {
                 steps: 4,
                 pressure: 40,
                 pressure_rate: 20,
-                open_valves: open_valves(["DD"])
+                open_valves: open_valves(["DD"]),
             }
         }))
     }
@@ -397,7 +413,7 @@ mod test {
             steps: 4,
             pressure: 40,
             pressure_rate: 20,
-            open_valves: open_valves(["DD"])
+            open_valves: open_valves(["DD"]),
         };
 
         let actual = generate_children(&rooms, &start, &edges);
@@ -408,13 +424,14 @@ mod test {
                 steps: 5,
                 pressure: 60,
                 pressure_rate: 33,
-                open_valves: open_valves(["BB", "DD"])
+                open_valves: open_valves(["BB", "DD"]),
             }
         }))
     }
 
     fn open_valves<'a, T>(vs: T) -> Rc<HashSet<&'a str>>
-    where T: IntoIterator<Item = &'a str> {
+        where T: IntoIterator<Item=&'a str>,
+    {
         Rc::new(vs.into_iter().collect())
     }
 
@@ -439,7 +456,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 1707;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
