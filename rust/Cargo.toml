@@ -11,3 +11,6 @@ itertools = "=0.10.5"
 
 [profile.dev]
 opt-level = 3
+
+[profile.release]
+debug = true

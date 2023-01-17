@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
@@ -19,7 +19,7 @@ pub fn main() {
 
     let input = include_str!("input");
     let input = parse_input(input);
-    let part2 = solve_part2(&input);
+    let part2 = solve_part2(input);
     println!("The solution to part 2 is {}", part2);
 }
 
@@ -62,13 +62,13 @@ fn parse_room(s: &str) -> IResult<&str, Room> {
     Ok((rem, room))
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct Node<'a> {
     room: &'a str,
     steps: i64,
     pressure: i64,
     pressure_rate: i64,
-    open_valves: Rc<HashSet<&'a str>>,
+    open_valves: Rc<BTreeSet<&'a str>>,
 }
 
 impl<'a> Hash for Node<'a> {
@@ -84,49 +84,55 @@ impl<'a> Hash for Node<'a> {
 }
 
 fn solve_part1(input: Input) -> i64 {
-    let rooms: HashMap<&str, Room> = input.rooms.into_iter()
+    solve(&input, 30, BTreeSet::new())
+        .into_iter()
+        .max_by_key(|(p, _)| *p)
+        .unwrap()
+        .0
+}
+
+fn solve<'a>(input: &Input<'a>, max_steps: i64, open_valves: BTreeSet<&'a str>) -> Vec<(i64, Rc<BTreeSet<&'a str>>)> {
+    let rooms: HashMap<&str, &Room> = input.rooms.iter()
         .map(|room| (room.label, room))
         .collect();
-
-    // calculate starting nodes where pressure is > 0, start at steps from AA
 
     let mut queue: VecDeque<Node> = [Node {
         room: "AA",
         steps: 0,
         pressure_rate: 0,
         pressure: 0,
-        open_valves: Rc::new(HashSet::new()),
+        open_valves: Rc::new(open_valves),
     }].into_iter().collect();
 
     // calculate simpler graph where nodes with no flow are removed, new edges could have weights > 1
     let edges: HashMap<&str, Vec<(&str, i64)>> = calculate_simplified_graph(&rooms);
 
     let mut end_nodes = vec![];
-    let mut seen = HashSet::new();
+    let mut seen = BTreeSet::new();
 
-    while let Some(current) = queue.pop_back() {
-        if current.steps > 30 {
-            continue;
+    while !queue.is_empty() {
+        while let Some(current) = queue.pop_back() {
+            if current.steps > max_steps {
+                continue;
+            }
+            if seen.contains(&current) {
+                continue;
+            }
+            if current.steps == max_steps {
+                end_nodes.push((current.pressure, Rc::clone(&current.open_valves)));
+            } else {
+                let new_nodes = generate_children(&rooms, &current, &edges);
+                queue.extend(new_nodes);
+            }
+            seen.insert(current);
         }
-        if seen.contains(&current) {
-            continue;
-        }
-        if current.steps == 30 {
-            end_nodes.push(current.pressure);
-        } else {
-            let new_nodes = generate_children(&rooms, &current, &edges);
-            queue.extend(new_nodes);
-        }
-        seen.insert(current);
+
     }
 
-
-    end_nodes.into_iter()
-        .max()
-        .unwrap()
+    end_nodes
 }
 
-fn bfs(rooms: &HashMap<&str, Room>, start: &str, target: &str) -> i64 {
+fn bfs(rooms: &HashMap<&str, &Room>, start: &str, target: &str) -> i64 {
     struct Node<'a> {
         label: &'a str,
         distance: i64,
@@ -156,7 +162,7 @@ fn bfs(rooms: &HashMap<&str, Room>, start: &str, target: &str) -> i64 {
     panic!("could not find path to {target}")
 }
 
-fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room<'a>>) -> HashMap<&'a str, Vec<(&'a str, i64)>> {
+fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, &Room<'a>>) -> HashMap<&'a str, Vec<(&'a str, i64)>> {
     let mut edges: HashMap<&str, Vec<(&str, i64)>> = HashMap::new();
 
     for start in rooms.keys() {
@@ -168,7 +174,7 @@ fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room<'a>>) -> HashMap
                 continue;
             }
             if start != end {
-                if let Some(d) = path_via_dead_rooms(rooms, start, end, 0, HashSet::new()) {
+                if let Some(d) = path_via_dead_rooms(rooms, start, end, 0, BTreeSet::new()) {
                     assert_ne!(d, 0);
                     edges.entry(start).or_default().push((end, d));
                 }
@@ -180,13 +186,11 @@ fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room<'a>>) -> HashMap
     let non_zero_valves: Vec<_> = edges.keys().copied().collect();
     for e in non_zero_valves {
         let d = bfs(rooms, "AA", e);
-        println!("adding edge {} -> {}", e, aa.label);
         edges.entry(e).or_default().push((aa.label, d));
         if "AA" != aa.label {
             dbg!(aa);
             panic!();
         }
-        println!("adding edge {} -> {}", aa.label, e);
         edges.entry(aa.label).or_default().push((e, d));
     }
 
@@ -195,7 +199,7 @@ fn calculate_simplified_graph<'a>(rooms: &HashMap<&'a str, Room<'a>>) -> HashMap
     edges
 }
 
-fn path_via_dead_rooms(rooms: &HashMap<&str, Room>, start: &str, end: &str, d: i64, visited: HashSet<&str>) -> Option<i64> {
+fn path_via_dead_rooms(rooms: &HashMap<&str, &Room>, start: &str, end: &str, d: i64, visited: BTreeSet<&str>) -> Option<i64> {
     if visited.contains(start) {
         return None;
     }
@@ -221,7 +225,11 @@ fn path_via_dead_rooms(rooms: &HashMap<&str, Room>, start: &str, end: &str, d: i
     None
 }
 
-fn generate_children<'a>(rooms: &HashMap<&'a str, Room>, current: &Node<'a>, edges: &HashMap<&'a str, Vec<(&'a str, i64)>>) -> Vec<Node<'a>> {
+fn generate_children<'a>(
+    rooms: &HashMap<&'a str, &Room>,
+    current: &Node<'a>,
+    edges: &HashMap<&'a str, Vec<(&'a str, i64)>>
+) -> Vec<Node<'a>> {
     let mut new_nodes = vec![];
     // do nothing
     let new = Node {
@@ -263,8 +271,25 @@ fn generate_children<'a>(rooms: &HashMap<&'a str, Room>, current: &Node<'a>, edg
     new_nodes
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: Input) -> i64 {
+    let part1_solutions = solve(&input, 26, BTreeSet::new());
+    let part1_solutions: BTreeSet<_> = part1_solutions.into_iter().collect();
+    let mut part1_solutions: Vec<_> = part1_solutions.into_iter().collect();
+    println!("part 1 solved, {} paths", part1_solutions.len());
+    part1_solutions.sort_by_key(|(a, _)| -*a);
+    let mut best = 0;
+    for (i, (sa, va)) in part1_solutions.iter().enumerate() {
+        if sa * 2 < best {
+            break;
+        }
+        for (sb, vb) in &part1_solutions[i+1..] {
+            if va.intersection(vb).next().is_none() {
+                best = (sa + sb).max(best);
+            }
+        }
+    }
+
+    best
 }
 
 #[cfg(test)]
@@ -274,13 +299,13 @@ mod test {
     #[test]
     fn test_example_children1() {
         let input = parse_input(include_str!("example"));
-        let rooms: HashMap<&str, Room> = input.rooms.into_iter()
+        let rooms: HashMap<&str, &Room> = input.rooms.iter()
             .map(|room| (room.label, room))
             .collect();
         let edges: HashMap<&str, Vec<(&str, i64)>> = calculate_simplified_graph(&rooms);
         let start = Node {
             room: "DD",
-            open_valves: Rc::new(HashSet::new()),
+            open_valves: Rc::new(BTreeSet::new()),
             steps: 1,
             pressure: 0,
             pressure_rate: 0,
@@ -289,35 +314,35 @@ mod test {
         let mut expected = vec![
             Node {
                 room: "DD",
-                open_valves: Rc::new(HashSet::new()),
+                open_valves: Rc::new(BTreeSet::new()),
                 steps: 2,
                 pressure: 0,
                 pressure_rate: 0,
             },
             Node {
                 room: "BB",
-                open_valves: Rc::new(HashSet::new()),
+                open_valves: Rc::new(BTreeSet::new()),
                 steps: 3,
                 pressure: 0,
                 pressure_rate: 0,
             },
             Node {
                 room: "CC",
-                open_valves: Rc::new(HashSet::new()),
+                open_valves: Rc::new(BTreeSet::new()),
                 steps: 2,
                 pressure: 0,
                 pressure_rate: 0,
             },
             Node {
                 room: "JJ",
-                open_valves: Rc::new(HashSet::new()),
+                open_valves: Rc::new(BTreeSet::new()),
                 steps: 4,
                 pressure: 0,
                 pressure_rate: 0,
             },
             Node {
                 room: "EE",
-                open_valves: Rc::new(HashSet::new()),
+                open_valves: Rc::new(BTreeSet::new()),
                 steps: 2,
                 pressure: 0,
                 pressure_rate: 0,
@@ -348,7 +373,7 @@ mod test {
     #[test]
     fn test_example_children2() {
         let input = parse_input(include_str!("example"));
-        let rooms: HashMap<&str, Room> = input.rooms.into_iter()
+        let rooms: HashMap<&str, &Room> = input.rooms.iter()
             .map(|room| (room.label, room))
             .collect();
         let edges: HashMap<&str, Vec<(&str, i64)>> = calculate_simplified_graph(&rooms);
@@ -376,7 +401,7 @@ mod test {
     #[test]
     fn test_example_children3() {
         let input = parse_input(include_str!("example"));
-        let rooms: HashMap<&str, Room> = input.rooms.into_iter()
+        let rooms: HashMap<&str, &Room> = input.rooms.iter()
             .map(|room| (room.label, room))
             .collect();
         let edges: HashMap<&str, Vec<(&str, i64)>> = calculate_simplified_graph(&rooms);
@@ -404,7 +429,7 @@ mod test {
     #[test]
     fn test_example_children4() {
         let input = parse_input(include_str!("example"));
-        let rooms: HashMap<&str, Room> = input.rooms.into_iter()
+        let rooms: HashMap<&str, &Room> = input.rooms.iter()
             .map(|room| (room.label, room))
             .collect();
         let edges: HashMap<&str, Vec<(&str, i64)>> = calculate_simplified_graph(&rooms);
@@ -429,7 +454,7 @@ mod test {
         }))
     }
 
-    fn open_valves<'a, T>(vs: T) -> Rc<HashSet<&'a str>>
+    fn open_valves<'a, T>(vs: T) -> Rc<BTreeSet<&'a str>>
         where T: IntoIterator<Item=&'a str>,
     {
         Rc::new(vs.into_iter().collect())
@@ -457,7 +482,7 @@ mod test {
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
         let expected = 1707;
-        let actual = solve_part2(&input);
+        let actual = solve_part2(input);
 
         assert_eq!(actual, expected)
     }
@@ -465,8 +490,13 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
+        // 1895 too low
+        // 2010 too low
+        // 2207 is someone else's answer
+        // 2228 is wrong
+        // 2347 too high
         let expected = 0;
-        let actual = solve_part2(&input);
+        let actual = solve_part2(input);
 
         assert_eq!(actual, expected)
     }
