@@ -32,7 +32,20 @@ fn solve_part1(input: &Input) -> i64 {
         .map(|(i, n)| (OriginalLocation(i), *n))
         .collect();
 
+    mix(&mut v);
 
+    let (zeros_index, _) = v.iter()
+        .enumerate()
+        .find(|(_i, (_, n))| *n == 0)
+        .unwrap();
+
+    [1000, 2000, 3000].into_iter()
+        .map(|i| i + zeros_index)
+        .map(|i| v[i % v.len()].1)
+        .sum()
+}
+
+fn mix(v: &mut Vec<(OriginalLocation, i64)>) {
     for i in 0..(v.len()) {
         let (mut current_index, (_, n)) = v.iter()
             .enumerate()
@@ -41,7 +54,7 @@ fn solve_part1(input: &Input) -> i64 {
         let increment: i64 = if *n > 0 { 1 } else { -1 };
 
         let n = *n;
-        let n_abs = n.abs();
+        let n_abs = n.abs() % (v.len() as i64 - 1);
 
         for _ in 0..n_abs {
             let mut next = (current_index as i64) + increment;
@@ -56,16 +69,6 @@ fn solve_part1(input: &Input) -> i64 {
             // print(&v);
         }
     }
-
-    let (zeros_index, _) = v.iter()
-        .enumerate()
-        .find(|(_i, (_, n))| *n == 0)
-        .unwrap();
-
-    [1000, 2000, 3000].into_iter()
-        .map(|i| i + zeros_index)
-        .map(|i| v[i % v.len()].1)
-        .sum()
 }
 
 #[allow(dead_code)]
@@ -78,8 +81,27 @@ fn print(v: &[(OriginalLocation, i64)]) {
     println!("]");
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> i64 {
+    let decryption_key = 811589153;
+    let mut v = input.numbers.iter()
+        .map(|n| n * decryption_key)
+        .enumerate()
+        .map(|(i, n)| (OriginalLocation(i), n))
+        .collect();
+
+    for _ in 0..10 {
+        mix(&mut v);
+    }
+
+    let (zeros_index, _) = v.iter()
+        .enumerate()
+        .find(|(_i, (_, n))| *n == 0)
+        .unwrap();
+
+    [1000, 2000, 3000].into_iter()
+        .map(|i| i + zeros_index)
+        .map(|i| v[i % v.len()].1)
+        .sum()
 }
 
 #[cfg(test)]
@@ -107,7 +129,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 1623178306;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -116,7 +138,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 535648840980;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
