@@ -4,8 +4,6 @@ use nom::character::complete::{multispace1, space0};
 use nom::multi::{many1, separated_list0};
 use nom::sequence::preceded;
 
-use crate::parse::parse_i32;
-
 pub fn main() {
     let input = include_str!("input");
 
@@ -63,8 +61,9 @@ fn parse_term(input: &str) -> IResult<&str, Term> {
 }
 
 fn parse_number(input: &str) -> IResult<&str, Term> {
-    parse_i32
-        .map(|n| n as i64)
+    let parse_i64 = nom::character::complete::i64;
+
+    parse_i64
         .map(Term::Number)
         .parse(input)
 }
@@ -225,7 +224,7 @@ mod test {
     fn test_parse_parens() {
         let input = "((1))";
 
-        let expected = Term::ParenExp(vec![Term::ParenExp(vec![Term::Number(1)])]);
+        let expected = ParenExp(vec![ParenExp(vec![Number(1)])]);
 
         let actual = parse_parens(input).unwrap();
 

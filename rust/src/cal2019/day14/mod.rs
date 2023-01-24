@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use nom::bytes::complete::tag;
@@ -6,8 +7,6 @@ use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::{preceded, separated_pair};
 
-use crate::parse::parse_i32;
-
 pub fn main() {
     let input = include_str!("input");
     println!("The solution to part 1 is {}", solve_part1(input));
@@ -15,7 +14,7 @@ pub fn main() {
 }
 
 fn solve_part2(input: &str) -> u64 {
-    let (_, formulas) = parse_formulas(&input).unwrap();
+    let (_, formulas) = parse_formulas(input).unwrap();
 
     let map: HashMap<&str, Formula> = build_lookup_table(&formulas);
 
@@ -28,10 +27,10 @@ fn solve_part2(input: &str) -> u64 {
         let middle = (lower + upper) / 2;
         let mut left_over = init_left_over(&formulas);
         let ore_needed = gen("FUEL", middle, &mut left_over, &map);
-        if ore_needed > LIMIT {
-            upper = middle - 1;
-        } else if ore_needed < LIMIT {
-            lower = middle + 1;
+        match ore_needed.cmp(&LIMIT) {
+            Ordering::Less => lower = middle + 1,
+            Ordering::Greater => upper = middle - 1,
+            _ => {}
         }
     }
 
@@ -39,7 +38,7 @@ fn solve_part2(input: &str) -> u64 {
 }
 
 fn solve_part1(input: &str) -> u64 {
-    let (_, formulas) = parse_formulas(&input).unwrap();
+    let (_, formulas) = parse_formulas(input).unwrap();
 
     let map: HashMap<&str, Formula> = build_lookup_table(&formulas);
 
@@ -48,7 +47,7 @@ fn solve_part1(input: &str) -> u64 {
     gen("FUEL", 1, &mut left_over, &map)
 }
 
-fn init_left_over<'a>(formulas: &[Formula<'a >]) -> HashMap<&'a str, u64> {
+fn init_left_over<'a>(formulas: &[Formula<'a>]) -> HashMap<&'a str, u64> {
     let mut left_over = HashMap::new();
     formulas.iter()
         .map(|f| f.output.0)
@@ -69,7 +68,7 @@ fn parse_formulas(input: &str) -> IResult<&str, Vec<Formula>> {
     separated_list1(line_ending, parse_formula)(input)
 }
 
-fn parse_formula<'a>(input: &'a str) -> IResult<&'a str, Formula> {
+fn parse_formula(input: &str) -> IResult<&str, Formula> {
     // example "7 A, 1 E => 1 FUEL"
 
     let (input, (inputs, output)) = separated_pair(
@@ -81,7 +80,7 @@ fn parse_formula<'a>(input: &'a str) -> IResult<&'a str, Formula> {
     Ok((input, Formula { inputs, output }))
 }
 
-fn parse_formula_input<'a>(input: &'a str) -> IResult<&str, Vec<(&'a str, u64)>> {
+fn parse_formula_input(input: &str) -> IResult<&str, Vec<(&str, u64)>> {
     let separator = preceded(nom::character::complete::char(','), space0);
     let (input, inputs) = separated_list1(separator, parse_formula_pair)(input)?;
 
@@ -89,6 +88,8 @@ fn parse_formula_input<'a>(input: &'a str) -> IResult<&str, Vec<(&'a str, u64)>>
 }
 
 fn parse_formula_pair(input: &str) -> IResult<&str, (&str, u64)> {
+    let parse_i32 = nom::character::complete::i32;
+
     let (input, amount) = parse_i32(input)?;
     let (input, _) = space0(input)?;
     let (input, chemical) = alpha1(input)?;
@@ -132,7 +133,7 @@ fn gen<'a>(chemical: &'a str, amount_needed: u64, left_over: &mut HashMap<&'a st
     }
     for (input_chemical, input_amount) in &formula.inputs {
         let input_needed = times_to_run_formula * *input_amount;
-        ore_required += gen(*input_chemical, input_needed, left_over, lookup);
+        ore_required += gen(input_chemical, input_needed, left_over, lookup);
     }
 
     ore_required

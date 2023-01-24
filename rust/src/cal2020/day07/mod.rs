@@ -9,8 +9,6 @@ use nom::combinator::map;
 use nom::multi::separated_list1;
 use nom::sequence::{separated_pair, terminated, tuple};
 
-use crate::parse::parse_i32;
-
 pub fn main() {
     let input = include_str!("input");
     let input = parse_input(input);
@@ -111,6 +109,8 @@ fn parse_contents(input: &str) -> IResult<&str, HashMap<&str, u32>> {
 }
 
 fn parse_content_pair(input: &str) -> IResult<&str, (&str, u32)> {
+    let parse_i32 = nom::character::complete::i32;
+
     let (input, (amount, _, color)) = tuple((parse_i32, tag(" "), parse_color))(input)?;
 
     Ok((input, (color, amount as u32)))

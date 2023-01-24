@@ -3,11 +3,9 @@ use std::collections::{HashMap, HashSet};
 use nom::character::complete::anychar;
 use nom::IResult;
 
-use crate::parse::parse_i32;
-
 pub fn main() {
     let input = include_str!("input");
-    let input = parse(&input);
+    let input = parse(input);
     let (a, b) = solve(&input);
 
     println!("The solution to part 1 is {}", a);
@@ -16,7 +14,7 @@ pub fn main() {
 
 fn parse(s: &str) -> Input {
     let wires: Vec<&str> = s
-        .split("\n")
+        .split('\n')
         .collect();
 
     let a = parse_wire(wires[0]);
@@ -27,7 +25,7 @@ fn parse(s: &str) -> Input {
 
 fn parse_wire(s: &str) -> Wire {
     let path: Vec<Line> = s
-        .split(",")
+        .split(',')
         .map(|w| {
             let (_, line) = parse_line(w).unwrap();
             line
@@ -39,6 +37,7 @@ fn parse_wire(s: &str) -> Wire {
 
 fn parse_line(input: &str) -> IResult<&str, Line> {
     let (input, dir) = parse_direction(input)?;
+    let parse_i32 = nom::character::complete::i32;
     let (input, dist) = parse_i32(input)?;
 
     Ok((input, Line { direction: dir, distance: dist }))
@@ -68,7 +67,7 @@ struct Input {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 struct Wire {
-    path: Vec<Line>
+    path: Vec<Line>,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -86,7 +85,7 @@ enum Direction {
 }
 
 impl Direction {
-    fn to_vector(&self) -> (i32, i32) {
+    fn to_vector(self) -> (i32, i32) {
         use Direction::*;
 
         match self {
@@ -228,7 +227,7 @@ mod test {
     #[test]
     fn test_solution() {
         let input = include_str!("input");
-        let input = parse(&input);
+        let input = parse(input);
         let (a, b) = solve(&input);
 
         assert_eq!(a, 293);

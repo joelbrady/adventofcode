@@ -3,8 +3,6 @@ mod cal2019;
 mod cal2020;
 mod cal2021;
 mod cal2022;
-mod graph;
-mod parse;
 
 fn main() {
     call_2018();

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::graph::Graph;
+use crate::cal2019::day06::graph::Graph;
 
 pub fn main() {
     let input = include_str!("input");
@@ -14,7 +14,7 @@ pub fn main() {
 
 fn parse(input: &str) -> Vec<Orbit> {
     input.lines()
-        .map(|s| parse_orbit(s))
+        .map(parse_orbit)
         .collect()
 }
 
@@ -52,14 +52,14 @@ fn bfs(graph: &Graph<String>, you: &Orbit, san: &Orbit) -> i32 {
     let mut queue: Vec<(String, i32)> = vec![(String::from(start), 0)];
     let mut visited: HashSet<String> = HashSet::new();
 
-    while queue.len() > 0 {
+    while !queue.is_empty() {
         let (node, depth) = queue.pop().unwrap();
         if visited.contains(&node) {
             continue;
         } else {
             visited.insert(node.clone());
         }
-        if &node == end {
+        if node == end {
             return depth
         }
         graph.get_children(&node)
@@ -84,7 +84,7 @@ fn cost(n: &str, graph: &Graph<String>, depth: i32) -> i32 {
 }
 
 fn build_graph(orbits: &[Orbit], graph: Graph<String>) -> Graph<String> {
-    if orbits.len() == 0 {
+    if orbits.is_empty() {
         graph
     } else {
         let orbit = &orbits[0];
@@ -94,7 +94,7 @@ fn build_graph(orbits: &[Orbit], graph: Graph<String>) -> Graph<String> {
 }
 
 fn build_graph2(orbits: &[Orbit], graph: Graph<String>) -> Graph<String> {
-    if orbits.len() == 0 {
+    if orbits.is_empty() {
         graph
     } else {
         let orbit = &orbits[0];
@@ -158,4 +158,68 @@ mod test {
         let solution = solve2(&input);
         assert_eq!(solution, 547);
     }
+}
+
+mod graph {
+    use std::collections::HashMap;
+    use std::hash::Hash;
+
+    #[derive(Debug)]
+    pub struct Graph<N: Eq + Hash + Clone> {
+        edges: HashMap<N, Vec<N>>,
+    }
+
+    impl Graph<String> {
+        pub fn new() -> Graph<String> {
+            Graph { edges: HashMap::new() }
+        }
+
+        pub fn add_edge<V>(&self, a: V, b: V) -> Self
+            where V: Into<String> {
+            let a = a.into();
+            let b = b.into();
+            let mut edges = self.edges.clone();
+            let mut children = edges.get(&a)
+                .cloned()
+                .unwrap_or_default();
+            children.push(b);
+            edges.insert(a, children);
+            Graph { edges }
+        }
+
+        #[allow(dead_code)]
+        pub fn has_edge<V>(&self, a: V, b: V) -> bool
+            where V: Into<String> {
+            self.edges.get(&a.into())
+                .map(|v| v.contains(&b.into()))
+                .unwrap_or(false)
+        }
+
+        pub fn get_children<V>(&self, a: V) -> Vec<String>
+            where V: Into<String> {
+            self.edges.get(&a.into())
+                .cloned()
+                .unwrap_or_default()
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_add_edge() {
+            let g: Graph<String> = Graph::new();
+            let g = g.add_edge("a", "b");
+            assert!(g.has_edge("a", "b"));
+            assert!(!g.has_edge("a", "c"));
+            assert!(!g.has_edge("c", "c"));
+            assert!(!g.has_edge("b", "a"));
+
+            assert_eq!(g.get_children("a"), vec![String::from("b")]);
+            let expected: Vec<String> = vec![];
+            assert_eq!(g.get_children("b"), expected);
+        }
+    }
+
 }

@@ -6,12 +6,10 @@ use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::separated_pair;
 
-use crate::parse::parse_i32;
-
 pub fn main() {
     let input = include_str!("input");
 
-    let input = parse_input(&input);
+    let input = parse_input(input);
 
     let part1 = solve(&input);
 
@@ -94,6 +92,8 @@ fn parse_ranges(input: &str) -> IResult<&str, Vec<Range>> {
 }
 
 fn parse_range(input: &str) -> IResult<&str, Range> {
+    let parse_i32 = nom::character::complete::i32;
+
     let (input, (start, end)) = separated_pair(parse_i32, tag("-"), parse_i32)(input)?;
 
     Ok((input, Range {
@@ -105,7 +105,7 @@ fn parse_range(input: &str) -> IResult<&str, Range> {
 fn parse_my_ticket(input: &str) -> Ticket {
     let values = input.lines()
         .skip(1)
-        .map(|s| parse_values(s))
+        .map(parse_values)
         .next()
         .unwrap();
 
@@ -123,7 +123,7 @@ fn parse_values(input: &str) -> Vec<i32> {
 fn parse_nearby_tickets(input: &str) -> Vec<Ticket> {
     input.lines()
         .skip(1)
-        .map(|s| parse_values(s))
+        .map(parse_values)
         .map(|values| Ticket { values })
         .collect()
 }

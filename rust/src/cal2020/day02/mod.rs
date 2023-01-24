@@ -5,8 +5,6 @@ use nom::IResult;
 use nom::multi::separated_list1;
 use nom::sequence::separated_pair;
 
-use crate::parse::parse_i32;
-
 pub fn main() {
     let input = include_str!("input");
     let input = parse_input(input);
@@ -27,7 +25,7 @@ fn parse_password_check(input: &str) -> IResult<&str, PasswordCheck> {
     let (input, (policy, password)) = separated_pair(
         parse_policy,
         tag(": "),
-        take_while(|c| is_alphabetic(c as u8))
+        take_while(|c| is_alphabetic(c as u8)),
     )(input)?;
 
     Ok((input, PasswordCheck {
@@ -37,6 +35,8 @@ fn parse_password_check(input: &str) -> IResult<&str, PasswordCheck> {
 }
 
 fn parse_policy(input: &str) -> IResult<&str, Policy> {
+    let parse_i32 = nom::character::complete::i32;
+
     let min_max_parser = separated_pair(parse_i32, tag("-"), parse_i32);
     let (input, ((min, max), char)) = separated_pair(min_max_parser, tag(" "), take(1usize))(input)?;
 
@@ -60,7 +60,7 @@ struct PasswordCheck<'a> {
     password: String,
 }
 
-impl<'a> PasswordCheck<'_> {
+impl PasswordCheck<'_> {
     fn validate(&self) -> bool {
         let occurrences = self.password.matches(self.policy.character)
             .count();

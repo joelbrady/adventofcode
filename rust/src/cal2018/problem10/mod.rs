@@ -2,17 +2,13 @@ use std::collections::HashMap;
 use std::fmt::{Error, Formatter};
 
 use nom::bytes::complete::tag;
-use nom::character::complete::{char, multispace1};
+use nom::character::complete::{char, multispace1, space0};
 use nom::IResult;
-use nom::sequence::separated_pair;
-
-use crate::parse::parse_i32;
+use nom::sequence::{preceded, separated_pair};
 
 pub fn main() -> std::io::Result<()> {
     let input = include_str!("input.a");
     let lines: Vec<String> = input.lines().map(|s| s.to_string()).collect();
-
-    println!("got input");
 
     let mut points: Vec<Point> = lines
         .iter()
@@ -21,13 +17,10 @@ pub fn main() -> std::io::Result<()> {
         .collect::<Result<Vec<Point>, _>>()
         .unwrap();
 
-    println!("parsed points");
-
     display(&points);
 
-    for i in 0..100000 {
+    for _ in 0..100000 {
         points = iterate(points);
-        println!("{}", i);
         display(&points)
     }
 
@@ -51,19 +44,19 @@ fn display(points: &Vec<Point>) {
         .map(|p| p.position.y)
         .collect();
 
-    let min_x = xs.iter().min().unwrap().clone();
-    let min_y = ys.iter().min().unwrap().clone();
-    let max_x = xs.iter().max().unwrap().clone();
-    let max_y = ys.iter().max().unwrap().clone();
+    let min_x = *xs.iter().min().unwrap();
+    let min_y = *ys.iter().min().unwrap();
+    let max_x = *xs.iter().max().unwrap();
+    let max_y = *ys.iter().max().unwrap();
 
     let limit = 100;
 
     if distance(&min_x, &max_x) > limit {
-        return
+        return;
     }
 
     if distance(&min_y, &max_y) > limit {
-        return
+        return;
     }
 
     let mut grid: HashMap<(i32, i32), &str> = HashMap::new();
@@ -171,7 +164,12 @@ fn parse_velocity(input: &str) -> IResult<&str, Vector> {
 
 fn parse_pair(input: &str) -> IResult<&str, (i32, i32)> {
     let (input, _) = char('<')(input)?;
-    let (input, (x, y)) = separated_pair(parse_i32, char(','), parse_i32)(input)?;
+    let parse_i32 = nom::character::complete::i32;
+    let (input, (x, y)) = separated_pair(
+        preceded(space0, parse_i32),
+        char(','),
+        preceded(space0, parse_i32),
+    )(input)?;
     let (input, _) = char('>')(input)?;
     Ok((input, (x, y)))
 }
