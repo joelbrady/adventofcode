@@ -180,13 +180,13 @@ impl Node {
 fn solve_part1(input: &Input) -> i64 {
     input.blueprints.iter()
         .map(|b| {
-            let geodes = simulate(b);
+            let geodes = simulate(b, 24);
             b.id * geodes
         })
         .sum()
 }
 
-fn simulate(blueprint: &Blueprint) -> i64 {
+fn simulate(blueprint: &Blueprint, max_steps: i64) -> i64 {
     let mut queue = VecDeque::new();
 
     let start_node = Node {
@@ -212,14 +212,14 @@ fn simulate(blueprint: &Blueprint) -> i64 {
             continue;
         }
 
-        if current.steps == 24 {
+        if current.steps == max_steps {
             best = best.max(current.geode);
             continue;
         }
 
-        assert!(current.steps < 24);
+        assert!(current.steps < max_steps);
 
-        let children = generate_children(blueprint, &current, best);
+        let children = generate_children(blueprint, &current, best, max_steps);
         queue.extend(children);
         seen.insert(current);
     }
@@ -235,17 +235,18 @@ enum RobotType {
     Geode,
 }
 
-fn generate_children(blueprint: &Blueprint, current: &Node, current_best: i64) -> Vec<Node> {
+fn generate_children(blueprint: &Blueprint, current: &Node, current_best: i64, max_steps: i64) -> Vec<Node> {
     let mut children = vec![];
 
-    for (cost, robot_type) in [
-        (&blueprint.ore_robot_cost, RobotType::Ore),
-        (&blueprint.clay_robot_cost, RobotType::Clay),
-        (&blueprint.obsidian_robot_cost, RobotType::Obsidian),
-        (&blueprint.geode_robot_cost, RobotType::Geode),
-    ] {
-        let remaining = 24 - current.steps;
-        if current.geode + remaining * current.geode_robots + triangle(remaining) > current_best {
+    let remaining = max_steps - current.steps;
+
+    if (current.geode + (remaining * current.geode_robots) + triangle(remaining)) > current_best {
+        for (cost, robot_type) in [
+            (&blueprint.ore_robot_cost, RobotType::Ore),
+            (&blueprint.clay_robot_cost, RobotType::Clay),
+            (&blueprint.obsidian_robot_cost, RobotType::Obsidian),
+            (&blueprint.geode_robot_cost, RobotType::Geode),
+        ] {
             if current.can_afford(cost) && !current.has_enough(blueprint, robot_type) {
                 let node = current.child_with(|n| {
                     n.subtract(cost);
@@ -271,8 +272,11 @@ fn triangle(n: i64) -> i64 {
     (n * (n - 1)) / 2
 }
 
-fn solve_part2(_input: &Input) -> i64 {
-    todo!()
+fn solve_part2(input: &Input) -> i64 {
+    input.blueprints.iter()
+        .take(3)
+        .map(|b| simulate(b, 32))
+        .product()
 }
 
 #[cfg(test)]
@@ -300,7 +304,7 @@ mod test {
     #[test]
     fn test_solve_part2_example() {
         let input = parse_input(include_str!("example"));
-        let expected = 0;
+        let expected = 56 * 62;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
@@ -309,7 +313,7 @@ mod test {
     #[test]
     fn test_solve_part2() {
         let input = parse_input(include_str!("input"));
-        let expected = 0;
+        let expected = 10336;
         let actual = solve_part2(&input);
 
         assert_eq!(actual, expected)
